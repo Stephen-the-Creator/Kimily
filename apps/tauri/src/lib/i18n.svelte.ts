@@ -59,6 +59,8 @@ export function translate(lang: AppLanguage, nl: string, en: string): string {
   return entry?.[lang] ?? en;
 }
 
+const brand = (s: string) => s.replace(/\bNooks\b/g, "Kimilys").replace(/\bNook's\b/g, "Kimily's").replace(/\bNook\b/g, "Kimily");
+
 export function tr(nl: string, en: string, vars?: Vars): string {
-  return fill(translate(appLanguage(), nl, en), vars);
+  return brand(fill(translate(appLanguage(), nl, en), vars));
 }

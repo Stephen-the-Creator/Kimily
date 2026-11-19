@@ -177,16 +177,16 @@ pub fn tray_status(app: &AppHandle, waiting: usize, working: usize) {
 pub fn tray_tooltip(waiting: usize, working: usize) -> String {
     use nook_core::i18n::{tr, trf};
     match (waiting, working) {
-        (0, 0) => "Nook".into(),
-        (0, n) => trf("Nook · bezig met {n}", "Nook · working on {n}", &[("n", &n)]),
-        (1, _) => tr("Nook · 1 Nook wacht op je", "Nook · 1 Nook is waiting for you").into(),
-        (n, _) => trf("Nook · {n} Nooks wachten op je", "Nook · {n} Nooks are waiting for you", &[("n", &n)]),
+        (0, 0) => "Kimily".into(),
+        (0, n) => trf("Kimily · bezig met {n}", "Kimily · working on {n}", &[("n", &n)]),
+        (1, _) => tr("Kimily · 1 chat wacht op je", "Kimily · 1 chat is waiting for you").into(),
+        (n, _) => trf("Kimily · {n} chats wachten op je", "Kimily · {n} chats are waiting for you", &[("n", &n)]),
     }
 }
 
 fn create_bar(app: &AppHandle) -> tauri::Result<()> {
     let window = WebviewWindowBuilder::new(app, BAR, WebviewUrl::App("index.html#bar".into()))
-        .title("Nook")
+        .title("Kimily")
         .inner_size(COLLAPSED.0, COLLAPSED.1)
         .decorations(false)
         .transparent(true)
@@ -369,11 +369,11 @@ pub fn open_bar(app: &AppHandle, focus: &str) {
 /// The tray menu's labels in the interface language, in menu order: open, window, new, settings, quit.
 fn tray_labels(language: &str) -> [&'static str; 5] {
     match language {
-        "nl" => ["Open Nook", "Open in venster", "Nieuwe Nook", "Instellingen…", "Stop Nook"],
-        "de" => ["Nook öffnen", "Im Fenster öffnen", "Neuer Nook", "Einstellungen…", "Nook beenden"],
-        "fr" => ["Ouvrir Nook", "Ouvrir dans une fenêtre", "Nouveau Nook", "Réglages…", "Quitter Nook"],
-        "es" => ["Abrir Nook", "Abrir en ventana", "Nuevo Nook", "Ajustes…", "Salir de Nook"],
-        _ => ["Open Nook", "Open in window", "New Nook", "Settings…", "Quit Nook"],
+        "nl" => ["Open Kimily", "Open in venster", "Nieuwe chat", "Instellingen…", "Stop Kimily"],
+        "de" => ["Kimily öffnen", "Im Fenster öffnen", "Neuer Chat", "Einstellungen…", "Kimily beenden"],
+        "fr" => ["Ouvrir Kimily", "Ouvrir dans une fenêtre", "Nouvelle discussion", "Réglages…", "Quitter Kimily"],
+        "es" => ["Abrir Kimily", "Abrir en ventana", "Nuevo chat", "Ajustes…", "Salir de Kimily"],
+        _ => ["Open Kimily", "Open in window", "New chat", "Settings…", "Quit Kimily"],
     }
 }
 
@@ -399,7 +399,7 @@ pub fn refresh_tray(app: &AppHandle) {
 
 fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = tray_menu(app)?;
-    let mut builder = TrayIconBuilder::with_id("nook").tooltip("Nook").menu(&menu).show_menu_on_left_click(false);
+    let mut builder = TrayIconBuilder::with_id("nook").tooltip("Kimily").menu(&menu).show_menu_on_left_click(false);
     if let Some(icon) = app.default_window_icon() {
         builder = builder.icon(icon.clone());
     }
@@ -469,9 +469,9 @@ mod tests {
     #[test]
     fn the_tray_says_what_waits() {
         nook_core::i18n::set_language("nl");
-        assert_eq!(tray_tooltip(0, 0), "Nook");
-        assert_eq!(tray_tooltip(0, 2), "Nook · bezig met 2");
-        assert_eq!(tray_tooltip(1, 3), "Nook · 1 Nook wacht op je");
-        assert_eq!(tray_tooltip(4, 0), "Nook · 4 Nooks wachten op je");
+        assert_eq!(tray_tooltip(0, 0), "Kimily");
+        assert_eq!(tray_tooltip(0, 2), "Kimily · bezig met 2");
+        assert_eq!(tray_tooltip(1, 3), "Kimily · 1 chat wacht op je");
+        assert_eq!(tray_tooltip(4, 0), "Kimily · 4 chats wachten op je");
     }
 }

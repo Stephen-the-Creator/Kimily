@@ -818,7 +818,7 @@
         <nav bind:this={navEl} class:glide={glider.ready} onwheel={(e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY; } }}>
           <span class="tab-glider" aria-hidden="true" style="transform: translateX({glider.x}px); width: {glider.w}px"></span>
           {#if tabVisible("home")}<button class:on={shown === "home"} onclick={() => select("home")}>Home</button>{/if}
-          <button class:on={shown === "nook"} onclick={() => select("nook")}>Nook {#if nook.waiting}<span class="dot waiting"></span>{/if}</button>
+          <button class:on={shown === "nook"} onclick={() => select("nook")}>Kimily {#if nook.waiting}<span class="dot waiting"></span>{/if}</button>
           {#if tabVisible("tasks")}<button class:on={shown === "tasks"} onclick={() => select("tasks")}>{tr("Taken", "Tasks")} {#if openTaskCount}<span class="tab-count">{openTaskCount}</span>{/if}</button>{/if}
           {#if tabVisible("focus")}<button class:on={shown === "focus"} onclick={() => select("focus")}>{tr("Focus", "Focus")} {#if focusTimer.running}<span class="tab-count">{focusTimer.formatted}</span>{/if}</button>{/if}
           {#if tabVisible("notes")}<button class:on={shown === "notes"} onclick={() => select("notes")}>{tr("Notities", "Notes")}</button>{/if}
