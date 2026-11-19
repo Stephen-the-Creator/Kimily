@@ -185,6 +185,43 @@ pub async fn forecast(place: &str, days: i64, timezone: &str, language: &str) ->
     Ok(text(&forecast, &chrono::Local::now().format("%Y-%m-%d").to_string()))
 }
 
+/// Current weather summary (resolved place name, temperature °C, WMO weather code) for the Dynamic Island pill.
+pub async fn current(place: &str, timezone: &str, language: &str) -> Result<Option<(String, f64, i64)>> {
+    let name = if place.trim().is_empty() { default_place(timezone) } else { place.trim().to_string() };
+    if name.is_empty() {
+        return Ok(None);
+    }
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10)).build()?;
+    let mut search = url::Url::parse("https://geocoding-api.open-meteo.com/v1/search").expect("valid url");
+    search
+        .query_pairs_mut()
+        .append_pair("name", &name)
+        .append_pair("count", "1")
+        .append_pair("language", language)
+        .append_pair("format", "json");
+    let places: Value = client.get(search).send().await?.json().await.unwrap_or_default();
+    let Some(found) = parse_place(&places) else {
+        return Ok(None);
+    };
+    let mut query = url::Url::parse("https://api.open-meteo.com/v1/forecast").expect("valid url");
+    query
+        .query_pairs_mut()
+        .append_pair("latitude", &found.latitude.to_string())
+        .append_pair("longitude", &found.longitude.to_string())
+        .append_pair("current", "temperature_2m,weather_code")
+        .append_pair("timezone", "auto");
+    let response = client.get(query).send().await?;
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+    let object: Value = response.json().await.unwrap_or_default();
+    let Some(temp) = object["current"]["temperature_2m"].as_f64() else {
+        return Ok(None);
+    };
+    let code = object["current"]["weather_code"].as_i64().unwrap_or(0);
+    Ok(Some((found.name, temp, code)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

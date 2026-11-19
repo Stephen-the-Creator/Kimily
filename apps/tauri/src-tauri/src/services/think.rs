@@ -68,7 +68,10 @@ pub async fn continue_in_chat(
     state.with_chat(|c| {
         c.push(&id, message);
         if let Some(conv) = c.get_mut(&id) {
-            conv.title = Conversation::title_from(&think_along::nudge_line(text, Some("Voorstel van Nook")));
+            conv.title = Conversation::title_from(&think_along::nudge_line(
+                text,
+                Some(nook_core::i18n::tr("Voorstel van Nook", "Suggestion from Nook")),
+            ));
         }
         c.active_id = Some(id.clone());
     });
@@ -84,25 +87,46 @@ pub async fn continue_in_chat(
 
 /// Meekijken: leest het voorste venster en stelt iets voor. Altijd een antwoord in de chat, ook als er niets is.
 pub async fn look_along(app: &AppHandle) -> Result<(), String> {
+    use nook_core::i18n::tr;
     if !super::screen::allowed(app) {
-        return Err("Je scherm staat op ‘alleen op deze computer’, dus een externe AI kijkt niet mee. Kies een lokaal brein, of haal het scherm weg bij Instellingen › Privacy.".into());
+        return Err(tr(
+            "Je scherm staat op ‘alleen op deze computer’, dus een externe AI kijkt niet mee. Kies een lokaal brein, of haal het scherm weg bij Instellingen › Privacy.",
+            "Your screen is set to ‘on this computer only’, so an external AI does not look along. Choose a local brain, or remove the screen under Settings › Privacy.",
+        )
+        .into());
     }
     let services = app.state::<Services>();
     let screen = services.platform.screen.clone();
     let front = tauri::async_runtime::spawn_blocking(move || screen.frontmost()).await.map_err(|e| e.to_string())?;
     let Some(front) = front.filter(|f| !f.text.trim().is_empty()) else {
         let status = services.platform.screen.status();
-        return Err(if status.is_empty() { "Ik zie niets om te lezen.".into() } else { status });
+        return Err(if status.is_empty() { tr("Ik zie niets om te lezen.", "I don't see anything to read.").into() } else { status });
     };
     let snapshot =
         ScreenSnapshot { app_name: front.app.clone(), window_title: front.title.clone(), text: front.text.chars().take(6000).collect() };
     let saw = front.app.clone();
     match ask_brain(app, think_along::LOOK_REQUEST, &snapshot).await? {
         Some((body, offers, plan)) => {
-            let text = if body.is_empty() { "Dit is mijn voorstel. Er gebeurt niets tot je op Uitvoeren klikt.".to_string() } else { body };
+            let text = if body.is_empty() {
+                tr(
+                    "Dit is mijn voorstel. Er gebeurt niets tot je op Uitvoeren klikt.",
+                    "Here is my suggestion. Nothing happens until you click Run.",
+                )
+                .to_string()
+            } else {
+                body
+            };
             continue_in_chat(app, &text, plan.actions, vec![saw], offers, false).await;
         }
-        None => continue_in_chat(app, "Ik zie niets waar je iets aan hebt.", vec![], vec![saw], vec![], false).await,
+        None => continue_in_chat(
+            app,
+            tr("Ik zie niets waar je iets aan hebt.", "I don't see anything useful here."),
+            vec![],
+            vec![saw],
+            vec![],
+            false,
+        )
+        .await,
     }
     Ok(())
 }
@@ -185,7 +209,9 @@ async fn look_and_offer(app: &AppHandle, app_id: &str, app_name: &str, window: &
     if super::quiet::silent(app) {
         return;
     }
-    let fallback = plan.actions.first().map(|a| format!("Zal ik dit doen? {}", tools::summarize(&a.tool, &a.input)));
+    let fallback = plan.actions.first().map(|a| {
+        nook_core::i18n::trf("Zal ik dit doen? {action}", "Shall I do this? {action}", &[("action", &tools::summarize(&a.tool, &a.input))])
+    });
     let line = think_along::nudge_line(&body, fallback.as_deref());
     if line.is_empty() || services.think.lock().unwrap_or_else(|e| e.into_inner()).already_offered(&line, services.now()) {
         return;
@@ -216,7 +242,9 @@ pub async fn answer(app: &AppHandle, id: &str, answer: &str) -> Result<(), Strin
         let guard = services.nudge.lock().unwrap_or_else(|e| e.into_inner());
         guard.as_ref().filter(|n| n.id == id).cloned()
     };
-    let Some(nudge) = nudge else { return Err("Dit aanbod is er niet meer.".into()) };
+    let Some(nudge) = nudge else {
+        return Err(nook_core::i18n::tr("Dit aanbod is er niet meer.", "This offer is no longer available.").into());
+    };
     if answer != "later" {
         *services.nudge.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
@@ -226,7 +254,11 @@ pub async fn answer(app: &AppHandle, id: &str, answer: &str) -> Result<(), Strin
     match answer {
         "yes" => {
             services.think.lock().unwrap_or_else(|e| e.into_inner()).accepted();
-            let text = if nudge.body.is_empty() { "Zal ik dit voor je doen?".to_string() } else { nudge.body.clone() };
+            let text = if nudge.body.is_empty() {
+                nook_core::i18n::tr("Zal ik dit voor je doen?", "Shall I do this for you?").to_string()
+            } else {
+                nudge.body.clone()
+            };
             continue_in_chat(app, &text, nudge.actions, vec![nudge.app], nudge.offers, true).await;
         }
         "open" => {

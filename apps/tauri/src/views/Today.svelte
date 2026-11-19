@@ -115,7 +115,7 @@
     <div class="loop">
       <button class="check" title={tr("Afvinken", "Check off")} onclick={() => done(loop.id)}>○</button>
       <span>{loop.title}</span>
-      {#if loop.due}<span class="faint">{new Date(loop.due).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
+      {#if loop.due}<span class="faint">{new Date(loop.due).toLocaleString(locale(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
       {:else}<span class="faint">{relativeTime(loop.created)}</span>{/if}
     </div>
   {:else}

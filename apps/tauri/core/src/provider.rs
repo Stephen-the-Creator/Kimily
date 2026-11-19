@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::i18n::{tr, trf};
 use crate::{NookError, Result};
 
 /// Het brein waarmee Nook denkt. Claude spreekt de Anthropic-API; de rest spreekt het OpenAI-protocol
@@ -86,23 +87,23 @@ impl AIProvider {
     pub fn title(self) -> &'static str {
         match self {
             Self::Claude => "Claude",
-            Self::ClaudeCode => "Claude Code (je abonnement)",
-            Self::CodexCli => "ChatGPT (je abonnement, via Codex)",
-            Self::GeminiCli => "Gemini (je Google-account, via Gemini CLI)",
-            Self::GrokCli => "Grok (je xAI-account, via Grok)",
-            Self::KimiCli => "Kimi (je Kimi-account, via Kimi Code)",
-            Self::VibeCli => "Mistral (je Mistral-account, via Vibe)",
+            Self::ClaudeCode => tr("Claude Code (je abonnement)", "Claude Code (your subscription)"),
+            Self::CodexCli => tr("ChatGPT (je abonnement, via Codex)", "ChatGPT (your subscription, via Codex)"),
+            Self::GeminiCli => tr("Gemini (je Google-account, via Gemini CLI)", "Gemini (your Google account, via Gemini CLI)"),
+            Self::GrokCli => tr("Grok (je xAI-account, via Grok)", "Grok (your xAI account, via Grok)"),
+            Self::KimiCli => tr("Kimi (je Kimi-account, via Kimi Code)", "Kimi (your Kimi account, via Kimi Code)"),
+            Self::VibeCli => tr("Mistral (je Mistral-account, via Vibe)", "Mistral (your Mistral account, via Vibe)"),
             Self::Openai => "OpenAI",
             Self::Gemini => "Google Gemini",
             Self::Grok => "Grok (xAI)",
             Self::Mistral => "Mistral",
             Self::Groq => "Groq",
-            Self::Openrouter => "OpenRouter (alle modellen)",
+            Self::Openrouter => tr("OpenRouter (alle modellen)", "OpenRouter (all models)"),
             Self::Deepseek => "DeepSeek",
             Self::Qwen => "Qwen",
             Self::Moonshot => "Moonshot (Kimi)",
-            Self::Ollama => "Ollama (op deze computer)",
-            Self::Lmstudio => "LM Studio (op deze computer)",
+            Self::Ollama => tr("Ollama (op deze computer)", "Ollama (on this computer)"),
+            Self::Lmstudio => tr("LM Studio (op deze computer)", "LM Studio (on this computer)"),
         }
     }
 
@@ -178,16 +179,16 @@ impl AIProvider {
 
     pub fn key_placeholder(self) -> &'static str {
         match self {
-            Self::Claude => "Anthropic API-sleutel (sk-ant-…)",
-            Self::Openai => "OpenAI API-sleutel (sk-…)",
-            Self::Gemini => "Google AI Studio-sleutel",
-            Self::Grok => "xAI API-sleutel (xai-…)",
-            Self::Mistral => "Mistral API-sleutel",
-            Self::Groq => "Groq API-sleutel (gsk_…)",
-            Self::Openrouter => "OpenRouter-sleutel (sk-or-…)",
-            Self::Deepseek => "DeepSeek API-sleutel",
-            Self::Qwen => "DashScope API-sleutel",
-            Self::Moonshot => "Moonshot API-sleutel",
+            Self::Claude => tr("Anthropic API-sleutel (sk-ant-…)", "Anthropic API key (sk-ant-…)"),
+            Self::Openai => tr("OpenAI API-sleutel (sk-…)", "OpenAI API key (sk-…)"),
+            Self::Gemini => tr("Google AI Studio-sleutel", "Google AI Studio key"),
+            Self::Grok => tr("xAI API-sleutel (xai-…)", "xAI API key (xai-…)"),
+            Self::Mistral => tr("Mistral API-sleutel", "Mistral API key"),
+            Self::Groq => tr("Groq API-sleutel (gsk_…)", "Groq API key (gsk_…)"),
+            Self::Openrouter => tr("OpenRouter-sleutel (sk-or-…)", "OpenRouter key (sk-or-…)"),
+            Self::Deepseek => tr("DeepSeek API-sleutel", "DeepSeek API key"),
+            Self::Qwen => tr("DashScope API-sleutel", "DashScope API key"),
+            Self::Moonshot => tr("Moonshot API-sleutel", "Moonshot API key"),
             Self::Ollama
             | Self::Lmstudio
             | Self::ClaudeCode
@@ -300,7 +301,7 @@ impl AIProvider {
         }
         let response = request.send().await.map_err(|e| {
             if self.is_local_server() {
-                NookError(format!("{} reageert niet. Draait de server?", self.title()))
+                NookError(trf("{name} reageert niet. Draait de server?", "{name} is not responding. Is the server running?", &[("name", &self.title())]))
             } else {
                 NookError(e.to_string())
             }
@@ -308,9 +309,13 @@ impl AIProvider {
         let status = response.status().as_u16();
         if !(200..300).contains(&status) {
             return Err(if self.is_local_server() {
-                NookError(format!("{} reageert niet. Draait de server?", self.title()))
+                NookError(trf("{name} reageert niet. Draait de server?", "{name} is not responding. Is the server running?", &[("name", &self.title())]))
             } else {
-                NookError(format!("{} gaf status {status}. Klopt de API-sleutel?", self.title()))
+                NookError(trf(
+                    "{name} gaf status {status}. Klopt de API-sleutel?",
+                    "{name} returned status {status}. Is the API key valid?",
+                    &[("name", &self.title()), ("status", &status)],
+                ))
             });
         }
         let object: serde_json::Value = response.json().await.unwrap_or_default();

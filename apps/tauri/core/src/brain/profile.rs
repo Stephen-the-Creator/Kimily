@@ -1,6 +1,7 @@
 //! Wat een model aankan, zodat prompts en tools passen in plaats van stilletjes over te lopen, en welk lokaal model bij
 //! deze computer past (de modeladviseur). Op Windows, Linux en Android denkt Nook lokaal via Ollama of LM Studio.
 
+use crate::i18n::{tr, trf};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -399,42 +400,66 @@ pub fn recommend(memory_gb: u64, installed: &[String], servers: &[ServerModel]) 
     };
 
     if let Some(top) = best.first().filter(|t| is_installed(t)) {
-        result.push(pull(top, true, format!("Past het best bij {memory_gb} GB en staat al op deze computer.")));
+        result.push(pull(
+            top,
+            true,
+            trf(
+                "Past het best bij {memory_gb} GB en staat al op deze computer.",
+                "Best fit for {memory_gb} GB and already installed on this computer.",
+                &[("memory_gb", &memory_gb)],
+            ),
+        ));
     }
     if let Some(first) = usable.first() {
-        result.push(server(first, format!("Staat al klaar in {}, niets te downloaden.", server_title(&first.server))));
+        let server_name = server_title(&first.server);
+        result.push(server(
+            first,
+            trf(
+                "Staat al klaar in {server}, niets te downloaden.",
+                "Already ready in {server}, nothing to download.",
+                &[("server", &server_name)],
+            ),
+        ));
     }
     if let Some(top) = best.first() {
         if !contains(&result, top.id) {
+            let size = formatted(top.size_gb);
             result.push(pull(
                 top,
                 is_installed(top),
-                format!(
-                    "Beste balans tussen kwaliteit en snelheid voor {memory_gb} GB geheugen (download van ± {} GB, één keer).",
-                    formatted(top.size_gb)
+                trf(
+                    "Beste balans tussen kwaliteit en snelheid voor {memory_gb} GB geheugen (download van ± {size} GB, één keer).",
+                    "Best balance between quality and speed for {memory_gb} GB memory (one-time download of ~{size} GB).",
+                    &[("memory_gb", &memory_gb), ("size", &size)],
                 ),
             ));
         }
     }
     for option in best.iter().filter(|o| is_installed(o)) {
         if !contains(&result, option.id) {
-            result.push(pull(option, true, "Staat al op deze computer.".into()));
+            result.push(pull(option, true, tr("Staat al op deze computer.", "Already on this computer.").into()));
         }
     }
     for model in usable.iter().skip(1) {
-        result.push(server(model, format!("Beschikbaar in {}.", server_title(&model.server))));
+        let server_name = server_title(&model.server);
+        result.push(server(model, trf("Beschikbaar in {server}.", "Available in {server}.", &[("server", &server_name)])));
     }
     for option in &best {
         if !contains(&result, option.id) {
-            result.push(pull(option, false, format!("Download van ± {} GB.", formatted(option.size_gb))));
+            let size = formatted(option.size_gb);
+            result.push(pull(option, false, trf("Download van ± {size} GB.", "Download of ~{size} GB.", &[("size", &size)])));
         }
     }
     if result.is_empty() {
         result.push(Recommendation {
             choice: Choice::Unavailable,
             ready: false,
-            reason: "Deze computer heeft te weinig geheugen voor een lokaal model. Draai Ollama op een andere computer in je netwerk, of kies een externe AI.".into(),
-            title: "Geen lokaal model mogelijk".into(),
+            reason: tr(
+                "Deze computer heeft te weinig geheugen voor een lokaal model. Draai Ollama op een andere computer in je netwerk, of kies een externe AI.",
+                "This computer does not have enough memory for a local model. Run Ollama on another computer on your network, or choose an external AI.",
+            )
+            .into(),
+            title: tr("Geen lokaal model mogelijk", "No local model possible").into(),
         });
     }
     result

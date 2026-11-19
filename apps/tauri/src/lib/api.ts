@@ -40,11 +40,12 @@ export const api = {
   cancelPlan: (nookId: string, messageId: string) => invoke<void>("cancel_plan", { nookId, messageId }),
 
   openLoops: () => invoke<OpenLoop[]>("open_loops"),
+  addLoop: (title: string, due?: string | null) => invoke<OpenLoop>("add_loop", { title, due: due ?? null }),
   completeLoop: (id: string) => invoke<void>("complete_loop", { id }),
   auditEntries: (query = "") => invoke<AuditEntry[]>("audit_entries", { query }),
   clearAudit: () => invoke<void>("clear_audit"),
 
-  barExpand: (expanded: boolean, notice = false, chip = false) => invoke<void>("bar_expand", { expanded, notice, chip }),
+  barExpand: (expanded: boolean, notice = false, chip = false, wide = false) => invoke<void>("bar_expand", { expanded, notice, chip, wide }),
   barMoved: () => invoke<void>("bar_moved"),
   showMain: (route: string) => invoke<void>("show_main", { route }),
   takeRoute: () => invoke<string | null>("take_route"),

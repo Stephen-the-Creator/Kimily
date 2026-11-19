@@ -11,17 +11,23 @@ use crate::state::AppState;
 
 pub const BAR: &str = "bar";
 
-/// Bar sizes: closed (a small round Nook) and open (the panel with tabs).
+/// Bar sizes: closed (round orb or Dynamic Island pill) and open (the panel with tabs).
 pub const COLLAPSED: (f64, f64) = (44.0, 44.0);
+/// Dynamic Island pill in resting state (Nook orb + clock or status).
+pub const COLLAPSED_PILL: (f64, f64) = (196.0, 36.0);
+/// Dynamic Island pill widened for live media controls or active agent status.
+pub const COLLAPSED_PILL_WIDE: (f64, f64) = (312.0, 38.0);
 /// A compact agent notice: the bar keeps its height and grows wider, with the message and its buttons in the row.
 pub const NOTICE: (f64, f64) = (560.0, 38.0);
 /// The closed bar with a chat chip under the round Nook ("Bericht van Peter"): the round Nook on top, the chip below it.
 pub const CHIP: (f64, f64) = (232.0, 82.0);
-/// The open panel's default size is this share of the screen's work area, in both directions.
+/// The open panel's full preset size is this share of the screen's work area, in both directions.
 pub const EXPANDED_SCREEN_FRACTION: f64 = 0.75;
 /// The smallest the open panel can be dragged to.
-pub const EXPANDED_MIN: (f64, f64) = (480.0, 320.0);
-pub const EXPANDED_LARGE: (f64, f64) = (960.0, 680.0);
+pub const EXPANDED_MIN: (f64, f64) = (420.0, 280.0);
+pub const EXPANDED_COMPACT: (f64, f64) = (520.0, 360.0);
+pub const EXPANDED_MEDIUM: (f64, f64) = (680.0, 460.0);
+pub const EXPANDED_LARGE: (f64, f64) = (920.0, 620.0);
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     create_bar(app)?;
@@ -114,8 +120,11 @@ pub fn closed_main(app: &AppHandle) {
     state.update_settings(|s| s.tray_hint_shown = true);
     super::notify(
         app,
-        "Nook draait verder",
-        "Nook blijft bovenaan je scherm en in het systeemvak. Alt+Ctrl+W opent het venster weer; stoppen doe je via het systeemvak.",
+        nook_core::i18n::tr("Nook draait verder", "Nook keeps running"),
+        nook_core::i18n::tr(
+            "Nook blijft bovenaan je scherm en in het systeemvak. Alt+Ctrl+W opent het venster weer; stoppen doe je via het systeemvak.",
+            "Nook stays at the top of your screen and in the system tray. Alt+Ctrl+W opens the window again; quit from the system tray.",
+        ),
     );
 }
 
@@ -166,11 +175,12 @@ pub fn tray_status(app: &AppHandle, waiting: usize, working: usize) {
 }
 
 pub fn tray_tooltip(waiting: usize, working: usize) -> String {
+    use nook_core::i18n::{tr, trf};
     match (waiting, working) {
         (0, 0) => "Nook".into(),
-        (0, n) => format!("Nook · bezig met {n}"),
-        (1, _) => "Nook · 1 Nook wacht op je".into(),
-        (n, _) => format!("Nook · {n} Nooks wachten op je"),
+        (0, n) => trf("Nook · bezig met {n}", "Nook · working on {n}", &[("n", &n)]),
+        (1, _) => tr("Nook · 1 Nook wacht op je", "Nook · 1 Nook is waiting for you").into(),
+        (n, _) => trf("Nook · {n} Nooks wachten op je", "Nook · {n} Nooks are waiting for you", &[("n", &n)]),
     }
 }
 
@@ -197,30 +207,48 @@ fn create_bar(app: &AppHandle) -> tauri::Result<()> {
 
 /// Bovenaan in het midden van het gekozen scherm, of op de plek waar de gebruiker hem neerzette (zwevend).
 pub fn place_bar(app: &AppHandle, expanded: bool) {
-    place_bar_sized(app, expanded, false, false);
+    place_bar_sized(app, expanded, false, false, LAST_WIDE.load(Ordering::Relaxed));
 }
 
-/// The size you dragged the open panel to, and the "large" setting it was made under. Kept so closing the panel and
-/// opening it again brings it back at that size instead of the default; a changed "large" setting starts over.
-static DRAGGED_SIZE: Mutex<Option<(f64, f64, bool)>> = Mutex::new(None);
+/// Resets any custom dragged panel size and applies the new preset size immediately.
+pub fn reset_panel_size(app: &AppHandle) {
+    *DRAGGED_SIZE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    *ACTIVE_PRESET.lock().unwrap_or_else(|e| e.into_inner()) = String::new();
+    let is_open = PANEL_OPEN.load(Ordering::Relaxed);
+    place_bar_sized(app, is_open, false, false, LAST_WIDE.load(Ordering::Relaxed));
+}
+
+/// Whether the closed Dynamic Island pill is currently in its wide media/status layout.
+static LAST_WIDE: AtomicBool = AtomicBool::new(false);
+
+/// The size you dragged the open panel to, and the size preset it was made under. Kept so closing the panel and
+/// opening it again brings it back at that size instead of the default; a changed preset starts over.
+static DRAGGED_SIZE: Mutex<Option<(f64, f64, String)>> = Mutex::new(None);
+static ACTIVE_PRESET: Mutex<String> = Mutex::new(String::new());
 
 /// Like [`place_bar`]; `notice` widens the closed bar for a compact agent notice, `chip` makes room under the round
-/// Nook for the chip of a new chat message.
-pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool) {
+/// Nook for the chip of a new chat message, `wide` widens the closed Dynamic Island pill for media controls or active agents.
+pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool, wide: bool) {
+    LAST_WIDE.store(wide, Ordering::Relaxed);
     let was_open = PANEL_OPEN.swap(expanded, Ordering::Relaxed);
     let Some(window) = app.get_webview_window(BAR) else { return };
     let settings = app.state::<AppState>().settings();
+    let preset = settings.effective_panel_size().to_string();
     if was_open {
-        // The panel is about to close or be placed again: what you dragged it to is kept first.
-        if let Ok(inner) = window.inner_size() {
-            let window_scale = window.scale_factor().unwrap_or(1.0);
-            let (w, h) = (inner.width as f64 / window_scale, inner.height as f64 / window_scale);
-            if w >= EXPANDED_MIN.0 && h >= EXPANDED_MIN.1 {
-                *DRAGGED_SIZE.lock().unwrap_or_else(|e| e.into_inner()) = Some((w, h, settings.panel_large));
+        let active_preset = ACTIVE_PRESET.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        // The panel is about to close or be placed again: what you dragged it to is kept first if the preset did not change.
+        if active_preset == preset {
+            if let Ok(inner) = window.inner_size() {
+                let window_scale = window.scale_factor().unwrap_or(1.0);
+                let (w, h) = (inner.width as f64 / window_scale, inner.height as f64 / window_scale);
+                if w >= EXPANDED_MIN.0 && h >= EXPANDED_MIN.1 {
+                    *DRAGGED_SIZE.lock().unwrap_or_else(|e| e.into_inner()) = Some((w, h, preset.clone()));
+                }
             }
         }
     }
     if expanded {
+        *ACTIVE_PRESET.lock().unwrap_or_else(|e| e.into_inner()) = preset.clone();
         // Over a full-screen game the closed bar lets clicks through; the open panel must take them right away.
         set_clicks_pass(&window, false);
     }
@@ -232,27 +260,38 @@ pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool
     let top = area.position.y as f64 / scale;
     let width = area.size.width as f64 / scale;
     let height = area.size.height as f64 / scale;
-    // By default the open panel fills 75% of the screen; the large setting never goes below its fixed size.
-    let default_open = (
+    let full_open = (
         (width * EXPANDED_SCREEN_FRACTION).max(EXPANDED_MIN.0).min(width),
         (height * EXPANDED_SCREEN_FRACTION).max(EXPANDED_MIN.1).min(height),
     );
+    let preset_open = match preset.as_str() {
+        "compact" => (EXPANDED_COMPACT.0.min(width), EXPANDED_COMPACT.1.min(height)),
+        "medium" => (EXPANDED_MEDIUM.0.min(width), EXPANDED_MEDIUM.1.min(height)),
+        "large" => (EXPANDED_LARGE.0.min(width), EXPANDED_LARGE.1.min(height)),
+        "full" => full_open,
+        _ => (EXPANDED_MEDIUM.0.min(width), EXPANDED_MEDIUM.1.min(height)),
+    };
     let dragged = (*DRAGGED_SIZE.lock().unwrap_or_else(|e| e.into_inner()))
-        .filter(|&(_, _, large)| large == settings.panel_large)
+        .clone()
+        .filter(|(_, _, p)| p == &preset)
         .map(|(w, h, _)| (w, h));
     let (w, h) = if !expanded && notice {
         NOTICE
     } else if !expanded && chip {
         CHIP
     } else if !expanded {
-        COLLAPSED
+        if settings.island_display == "orb" {
+            COLLAPSED
+        } else if wide {
+            COLLAPSED_PILL_WIDE
+        } else {
+            COLLAPSED_PILL
+        }
     } else if let Some((w, h)) = dragged {
         // A size dragged on a larger screen still fits this one.
         (w.min(width).max(EXPANDED_MIN.0.min(width)), h.min(height).max(EXPANDED_MIN.1.min(height)))
-    } else if settings.panel_large {
-        (EXPANDED_LARGE.0.max(default_open.0).min(width), EXPANDED_LARGE.1.max(default_open.1).min(height))
     } else {
-        default_open
+        preset_open
     };
     let (x, y) = match (settings.placement.as_str(), settings.float_x, settings.float_y) {
         ("floating", Some(fx), Some(fy)) => (left + width / 2.0 + fx - w / 2.0, top + fy),
@@ -429,6 +468,7 @@ mod tests {
 
     #[test]
     fn the_tray_says_what_waits() {
+        nook_core::i18n::set_language("nl");
         assert_eq!(tray_tooltip(0, 0), "Nook");
         assert_eq!(tray_tooltip(0, 2), "Nook · bezig met 2");
         assert_eq!(tray_tooltip(1, 3), "Nook · 1 Nook wacht op je");

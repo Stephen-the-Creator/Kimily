@@ -6,6 +6,8 @@ use std::sync::{Mutex, OnceLock};
 
 use serde::{Deserialize, Serialize};
 
+use crate::i18n::tr;
+
 /// Hoe een bron gekoppeld is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,7 +172,29 @@ fn registry() -> &'static Mutex<Registry> {
 }
 
 pub fn built_in() -> Vec<SourceDescriptor> {
-    BUILT_IN.iter().map(|(id, title, kind)| SourceDescriptor { id: (*id).into(), title: (*title).into(), kind: *kind }).collect()
+    BUILT_IN
+        .iter()
+        .map(|(id, nl, kind)| {
+            let title = match *id {
+                "calendar" => tr("Agenda", "Calendar"),
+                "icalfeeds" => tr("Andere agenda's", "Other calendars"),
+                "reminders" => tr("Herinneringen", "Reminders"),
+                "notes" => tr("Notities", "Notes"),
+                "messages" => tr("Berichten", "Messages"),
+                "callnotes" => tr("Gesprekken", "Call notes"),
+                "system" => tr("Deze computer", "This computer"),
+                "loops" => tr("Open punten", "Open loops"),
+                "memory" => tr("Geheugen", "Memory"),
+                "files" => tr("Bestanden", "Files"),
+                "contacts" => tr("Contacten", "Contacts"),
+                "clipboard" => tr("Klembord", "Clipboard"),
+                "screen" => tr("Scherm", "Screen"),
+                "customsources" => tr("Eigen bronnen", "Custom sources"),
+                _ => *nl,
+            };
+            SourceDescriptor { id: (*id).into(), title: title.into(), kind: *kind }
+        })
+        .collect()
 }
 
 pub fn all() -> Vec<SourceDescriptor> {

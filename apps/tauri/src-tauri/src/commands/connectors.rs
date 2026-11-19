@@ -15,6 +15,7 @@ use nook_core::connectors::pulls::{self, CiLog, PullRequestDetail, PullRequestLi
 use nook_core::connectors::whatsapp::{link::LinkView, Conversation, WhatsAppSettings};
 use nook_core::connectors::ConnectorError;
 use nook_core::connectors::{brand, gitlab};
+use nook_core::i18n::{tr, trf};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_opener::OpenerExt;
@@ -102,16 +103,56 @@ pub struct Overview {
     caps: Caps,
 }
 
-const LOCAL: [LocalSource; 8] = [
-    LocalSource { id: "calendar", title: "Agenda van het systeem", reason: "Apple Agenda bestaat hier niet, en de agenda's van Windows, GNOME of Android zijn (nog) niet te lezen. Koppel je agenda met een ICS-adres onder Andere agenda's: dat werkt voor Google, Outlook, iCloud en werkagenda's." },
-    LocalSource { id: "reminders", title: "Herinneringen", reason: "Alleen op de Mac (Apple Herinneringen). Nook houdt zelf je open punten bij." },
-    LocalSource { id: "notes", title: "Notities", reason: "Alleen op de Mac (Apple Notities)." },
-    LocalSource { id: "mail", title: "Mail", reason: "Alleen op de Mac (Mail.app)." },
-    LocalSource { id: "messages", title: "Berichten", reason: "Alleen op de Mac (iMessage)." },
-    LocalSource { id: "bear", title: "Bear", reason: "Bear bestaat alleen voor de Mac en iOS." },
-    LocalSource { id: "things", title: "Things", reason: "Things bestaat alleen voor de Mac en iOS." },
-    LocalSource { id: "contacts", title: "Contacten", reason: "Alleen op de Mac (Apple Contacten)." },
-];
+fn local_sources() -> Vec<LocalSource> {
+    vec![
+        LocalSource {
+            id: "calendar",
+            title: tr("Agenda van het systeem", "System calendar"),
+            reason: tr(
+                "Apple Agenda bestaat hier niet, en de agenda's van Windows, GNOME of Android zijn (nog) niet te lezen. Koppel je agenda met een ICS-adres onder Andere agenda's: dat werkt voor Google, Outlook, iCloud en werkagenda's.",
+                "Apple Calendar does not exist here, and the calendars of Windows, GNOME, or Android cannot be read (yet). Connect your calendar with an ICS address under Other calendars: that works for Google, Outlook, iCloud, and work calendars.",
+            ),
+        },
+        LocalSource {
+            id: "reminders",
+            title: tr("Herinneringen", "Reminders"),
+            reason: tr(
+                "Alleen op de Mac (Apple Herinneringen). Nook houdt zelf je open punten bij.",
+                "Mac only (Apple Reminders). Nook keeps track of your open loops itself.",
+            ),
+        },
+        LocalSource {
+            id: "notes",
+            title: tr("Notities", "Notes"),
+            reason: tr("Alleen op de Mac (Apple Notities).", "Mac only (Apple Notes)."),
+        },
+        LocalSource {
+            id: "mail",
+            title: "Mail",
+            reason: tr("Alleen op de Mac (Mail.app).", "Mac only (Mail.app)."),
+        },
+        LocalSource {
+            id: "messages",
+            title: tr("Berichten", "Messages"),
+            reason: tr("Alleen op de Mac (iMessage).", "Mac only (iMessage)."),
+        },
+        LocalSource {
+            id: "bear",
+            title: "Bear",
+            reason: tr("Bear bestaat alleen voor de Mac en iOS.", "Bear only exists for Mac and iOS."),
+        },
+        LocalSource {
+            id: "things",
+            title: "Things",
+            reason: tr("Things bestaat alleen voor de Mac en iOS.", "Things only exists for Mac and iOS."),
+        },
+        LocalSource {
+            id: "contacts",
+            title: tr("Contacten", "Contacts"),
+            reason: tr("Alleen op de Mac (Apple Contacten).", "Mac only (Apple Contacts)."),
+        },
+    ]
+}
 
 fn caps() -> Caps {
     Caps {
@@ -201,16 +242,16 @@ pub async fn connectors_overview(c: State<'_, Connectors>) -> Res<Overview> {
     Ok(Overview {
         connectors: c.hub.info(),
         services: service_views(&c),
-        remote: mcp_store::REMOTE_SERVICES
-            .iter()
+        remote: mcp_store::remote_services()
+            .into_iter()
             .map(|s| RemoteView {
-                service: s.clone(),
                 server: servers.iter().find(|x| x.service_id.as_deref() == Some(s.id)).map(|x| x.id.clone()),
+                service: s,
             })
             .collect(),
         mcp: mcp_views(&c),
         gitlab: gitlab::hosts(&c.env.store, &*c.env.secrets),
-        local: LOCAL.into_iter().collect(),
+        local: local_sources(),
         caps: caps(),
     })
 }
@@ -286,7 +327,7 @@ pub async fn account_rename(c: State<'_, Connectors>, id: String, label: String)
 /// Haalt een account weg met zijn token. Het hoofdaccount blijft bestaan, alleen zijn token gaat weg.
 #[tauri::command]
 pub async fn account_remove(c: State<'_, Connectors>, id: String) -> Res<()> {
-    let account = accounts::account(&c.env.store, &id).ok_or("Dit account bestaat niet.")?;
+    let account = accounts::account(&c.env.store, &id).ok_or_else(|| tr("Dit account bestaat niet.", "This account does not exist."))?;
     c.env.secrets.remove(&account.key("token"))?;
     accounts::remove(&c.env.store, &id);
     c.hub.refresh_now(&account.service).await;
@@ -295,7 +336,7 @@ pub async fn account_remove(c: State<'_, Connectors>, id: String) -> Res<()> {
 
 #[tauri::command]
 pub async fn account_token(c: State<'_, Connectors>, id: String, token: String) -> Res<Option<ConnectorInfo>> {
-    let account = accounts::account(&c.env.store, &id).ok_or("Dit account bestaat niet.")?;
+    let account = accounts::account(&c.env.store, &id).ok_or_else(|| tr("Dit account bestaat niet.", "This account does not exist."))?;
     c.env.secrets.write(&account.key("token"), &token)?;
     c.env.store.set_on(&account.service, true);
     c.hub.refresh_now(&account.service).await;
@@ -307,9 +348,9 @@ pub async fn account_token(c: State<'_, Connectors>, id: String, token: String) 
 /// Neemt de login van de GitHub CLI over voor dit account.
 #[tauri::command]
 pub async fn github_cli(c: State<'_, Connectors>, account: String) -> Res<Option<ConnectorInfo>> {
-    let target = accounts::account(&c.env.store, &account).ok_or("Dit account bestaat niet.")?;
+    let target = accounts::account(&c.env.store, &account).ok_or_else(|| tr("Dit account bestaat niet.", "This account does not exist."))?;
     let token = tauri::async_runtime::spawn_blocking(github::cli_token).await.map_err(|e| e.to_string())??;
-    c.env.secrets.write(&target.key("token"), &token).map_err(|_| "De kluis weigerde de sleutel. Probeer het nog eens.".to_string())?;
+    c.env.secrets.write(&target.key("token"), &token).map_err(|_| tr("De kluis weigerde de sleutel. Probeer het nog eens.", "The keychain refused the key. Please try again.").to_string())?;
     c.env.store.set_on("github", true);
     c.hub.refresh_now("github").await;
     Ok(info(&c, "github"))
@@ -328,9 +369,9 @@ struct SignInEvent {
 #[tauri::command]
 pub async fn github_device_start(app: AppHandle, c: State<'_, Connectors>, account: String) -> Res<github::DeviceCode> {
     if github::CLIENT_ID.is_empty() {
-        return Err("Koppel met GitHub is in deze versie nog niet ingesteld. Gebruik je GitHub CLI-login of plak een token.".into());
+        return Err(tr("Koppel met GitHub is in deze versie nog niet ingesteld. Gebruik je GitHub CLI-login of plak een token.", "Connect with GitHub is not set up in this version yet. Use your GitHub CLI login or paste a token.").into());
     }
-    let target = accounts::account(&c.env.store, &account).ok_or("Dit account bestaat niet.")?;
+    let target = accounts::account(&c.env.store, &account).ok_or_else(|| tr("Dit account bestaat niet.", "This account does not exist."))?;
     let code = github::request_code(&c.env, github::CLIENT_ID).await?;
     app.opener().open_url(&code.verification_uri, None::<&str>).map_err(|e| e.to_string())?;
     let (env, hub, pending) = (c.env.clone(), c.hub.clone(), code.clone());
@@ -345,7 +386,7 @@ pub async fn github_device_start(app: AppHandle, c: State<'_, Connectors>, accou
             SignInEvent {
                 service: "github".into(),
                 ok: result.is_ok(),
-                message: result.err().map(|e| e.message).unwrap_or_else(|| "GitHub is gekoppeld.".into()),
+                message: result.err().map(|e| e.message).unwrap_or_else(|| tr("GitHub is gekoppeld.", "GitHub is connected.").into()),
             },
         );
     });
@@ -362,11 +403,16 @@ pub async fn github_pull_requests(c: State<'_, Connectors>, state: State<'_, App
     Ok(c.github.pull_request_list(&watching).await)
 }
 
-const NO_GITHUB: &str = "Er is geen GitHub-account met een token gekoppeld. Koppel er een onder Instellingen › Accounts & koppelingen.";
+fn no_github() -> &'static str {
+    tr(
+        "Er is geen GitHub-account met een token gekoppeld. Koppel er een onder Instellingen › Accounts & koppelingen.",
+        "No GitHub account with a token is connected. Connect one under Settings › Accounts & connections.",
+    )
+}
 
 fn pull_target(repo: &str, number: i64) -> Res<()> {
     if !github::is_repository(repo) || number <= 0 {
-        return Err("Deze pull request bestaat niet.".into());
+        return Err(tr("Deze pull request bestaat niet.", "This pull request does not exist.").into());
     }
     Ok(())
 }
@@ -375,7 +421,7 @@ fn pull_target(repo: &str, number: i64) -> Res<()> {
 #[tauri::command]
 pub async fn github_pull_request(c: State<'_, Connectors>, account: Option<String>, repo: String, number: i64) -> Res<PullRequestDetail> {
     pull_target(&repo, number)?;
-    let (_, token) = c.github.token_for(account.as_deref()).ok_or(NO_GITHUB)?;
+    let (_, token) = c.github.token_for(account.as_deref()).ok_or_else(no_github)?;
     Ok(pulls::load_detail(&c.env, &token, &repo, number).await?)
 }
 
@@ -384,9 +430,9 @@ pub async fn github_pull_request(c: State<'_, Connectors>, account: Option<Strin
 #[tauri::command]
 pub async fn github_ci_log(c: State<'_, Connectors>, account: Option<String>, repo: String, job: i64) -> Res<CiLog> {
     if !github::is_repository(&repo) || job <= 0 {
-        return Err("Deze check bestaat niet.".into());
+        return Err(tr("Deze check bestaat niet.", "This check does not exist.").into());
     }
-    let (_, token) = c.github.token_for(account.as_deref()).ok_or(NO_GITHUB)?;
+    let (_, token) = c.github.token_for(account.as_deref()).ok_or_else(no_github)?;
     Ok(pulls::load_ci_log(&c.env, &token, &repo, job).await?)
 }
 
@@ -408,7 +454,7 @@ pub async fn github_merge_pull_request(
     if !pulls::MERGE_METHODS.contains(&method.as_str()) {
         return Err("Onbekende merge-methode.".into());
     }
-    let (account, _) = c.github.token_for(account.as_deref()).ok_or(NO_GITHUB)?;
+    let (account, _) = c.github.token_for(account.as_deref()).ok_or_else(no_github)?;
     let input = serde_json::json!({"repo": repo, "number": number, "method": method, "sha": sha, "account": account});
     let short: String = sha.chars().take(7).collect();
     let args = format!("{repo}#{number} · {method} · {short} · {account}");
@@ -442,7 +488,7 @@ pub async fn github_review_pull_request(
     if !["APPROVE", "REQUEST_CHANGES", "COMMENT"].contains(&event.as_str()) {
         return Err("Onbekende review-actie.".into());
     }
-    let (account, _) = c.github.token_for(account.as_deref()).ok_or(NO_GITHUB)?;
+    let (account, _) = c.github.token_for(account.as_deref()).ok_or_else(no_github)?;
     let input = serde_json::json!({"repo": repo, "number": number, "event": event, "body": body, "account": account});
     let args = format!("{repo}#{number} · {event} · {account}");
     let result = c.github.execute("github_review_pr", &input).await.unwrap_or_else(|| Err(ConnectorError::not_set_up("GitHub")));
@@ -462,7 +508,7 @@ pub async fn github_review_pull_request(
 
 fn actions_repo(repo: &str) -> Res<()> {
     if !github::is_repository(repo) {
-        return Err("Typ een repository als eigenaar/naam, bijvoorbeeld IAMichan/nook.".into());
+        return Err(tr("Typ een repository als eigenaar/naam, bijvoorbeeld IAMichan/nook.", "Type a repository as owner/name, for example IAMichan/nook.").into());
     }
     Ok(())
 }
@@ -471,7 +517,7 @@ fn actions_repo(repo: &str) -> Res<()> {
 fn actions_tokens(c: &Connectors, account: Option<&str>) -> Res<Vec<(String, String)>> {
     let tokens = c.github.tokens_in_order(account);
     if tokens.is_empty() {
-        return Err(NO_GITHUB.into());
+        return Err(no_github().into());
     }
     Ok(tokens)
 }
@@ -517,7 +563,7 @@ pub async fn github_actions_runs(
 pub async fn github_actions_run(c: State<'_, Connectors>, account: Option<String>, repo: String, run: i64) -> Res<RunDetail> {
     actions_repo(&repo)?;
     if run <= 0 {
-        return Err("Deze run bestaat niet.".into());
+        return Err(tr("Deze run bestaat niet.", "This run does not exist.").into());
     }
     let tokens = actions_tokens(&c, account.as_deref())?;
     Ok(actions::load_run(&c.env, &tokens, &repo, run).await?)
@@ -536,7 +582,7 @@ pub async fn github_actions_run_action(
 ) -> Res<()> {
     actions_repo(&repo)?;
     if run <= 0 || actions::action_path(&action).is_none() {
-        return Err("Deze actie bestaat niet.".into());
+        return Err(tr("Deze actie bestaat niet.", "This action does not exist.").into());
     }
     let tokens = actions_tokens(&c, account.as_deref())?;
     let tool = format!("github_actions_{action}");
@@ -585,7 +631,7 @@ pub async fn github_actions_dispatch(
     let git_ref = git_ref.trim().to_string();
     // GitHub takes at most 25 inputs; a ref is a branch or tag name.
     if workflow <= 0 || git_ref.is_empty() || git_ref.len() > 255 || git_ref.chars().any(char::is_control) || inputs.len() > 25 {
-        return Err("Deze workflow kan zo niet starten.".into());
+        return Err(tr("Deze workflow kan zo niet starten.", "This workflow cannot be started this way.").into());
     }
     let tokens = actions_tokens(&c, account.as_deref())?;
     match actions::dispatch_workflow(&c.env, &tokens, &repo, workflow, &git_ref, &inputs).await {
@@ -611,9 +657,9 @@ pub fn pull_watch_add(app: AppHandle, state: State<'_, AppState>, text: String) 
     let updated = pulls::add_watched(&text, &current);
     if updated == current {
         return Err(if current.len() >= pulls::WATCH_LIMIT {
-            format!("Je kunt tot {} organisaties en repositories volgen.", pulls::WATCH_LIMIT)
+            trf("Je kunt tot {limit} organisaties en repositories volgen.", "You can follow up to {limit} organizations and repositories.", &[("limit", &pulls::WATCH_LIMIT)])
         } else {
-            "Typ een organisatie (acme), een repository (acme/web) of een GitHub-link die nog niet in de lijst staat.".into()
+            tr("Typ een organisatie (acme), een repository (acme/web) of een GitHub-link die nog niet in de lijst staat.", "Type an organization (acme), a repository (acme/web), or a GitHub link that is not in the list yet.").into()
         });
     }
     let saved = state.update_settings(|s| s.watched_pull_requests = updated);
@@ -666,7 +712,7 @@ pub async fn mcp_set_enabled(c: State<'_, Connectors>, id: String, enabled: bool
 /// Start de server opnieuw en geeft zijn tools; een fout komt terug als zin.
 #[tauri::command]
 pub async fn mcp_test(c: State<'_, Connectors>, id: String) -> Res<Vec<McpTool>> {
-    let config = mcp_store::servers(&c.env.store).into_iter().find(|s| s.id == id).ok_or("Deze server bestaat niet meer.")?;
+    let config = mcp_store::servers(&c.env.store).into_iter().find(|s| s.id == id).ok_or_else(|| tr("Deze server bestaat niet meer.", "This server no longer exists."))?;
     let probe = mcp::McpConnector::new(c.env.clone(), config.clone());
     let result = probe.test().await;
     probe.disconnect().await;
@@ -676,7 +722,7 @@ pub async fn mcp_test(c: State<'_, Connectors>, id: String) -> Res<Vec<McpTool>>
 
 async fn sign_in(app: &AppHandle, c: &Connectors, config: &McpServerConfig) -> Res<()> {
     if !cfg!(desktop) {
-        return Err("Inloggen via de browser kan op Android nog niet. Gebruik een sleutel.".into());
+        return Err(tr("Inloggen via de browser kan op Android nog niet. Gebruik een sleutel.", "Signing in through the browser does not work on Android yet. Use a key.").into());
     }
     let opener = app.clone();
     mcp_store::sign_in(&c.env, config, move |url| opener.opener().open_url(url, None::<&str>).map_err(|e| e.to_string()))
@@ -726,7 +772,7 @@ pub async fn connector_repair_sign_in(app: AppHandle, c: State<'_, Connectors>, 
 /// Opnieuw inloggen bij een server (verlopen inlog).
 #[tauri::command]
 pub async fn mcp_sign_in(app: AppHandle, c: State<'_, Connectors>, id: String) -> Res<()> {
-    let config = mcp_store::servers(&c.env.store).into_iter().find(|s| s.id == id).ok_or("Deze server bestaat niet meer.")?;
+    let config = mcp_store::servers(&c.env.store).into_iter().find(|s| s.id == id).ok_or_else(|| tr("Deze server bestaat niet meer.", "This server no longer exists."))?;
     sign_in(&app, &c, &config).await
 }
 
@@ -751,7 +797,7 @@ pub async fn gitlab_save(c: State<'_, Connectors>, host: String, token: String) 
 /// Asks the host whose stored token this is, for the row and the manage sheet.
 #[tauri::command]
 pub async fn gitlab_check(c: State<'_, Connectors>, host: String) -> Res<gitlab::TokenCheck> {
-    let token = gitlab::token(&*c.env.secrets, &host).ok_or("Voor deze host staat geen token in je kluis.")?;
+    let token = gitlab::token(&*c.env.secrets, &host).ok_or_else(|| tr("Voor deze host staat geen token in je kluis.", "No token is stored in your keychain for this host."))?;
     Ok(gitlab::check(&c.env.http, &host, &token).await)
 }
 

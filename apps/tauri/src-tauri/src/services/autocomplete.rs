@@ -243,9 +243,17 @@ pub async fn engine_for(app: &AppHandle) -> Result<Arc<Engine>, String> {
         Plan::Local { server } => match engine::list_local_models(server).await {
             Ok(models) => match engine::choose_model(&settings, server, &models) {
                 Some(model) => Ok(Arc::new(Engine::new(EngineTarget::local(server, &model)))),
-                None => Err(format!("{} heeft nog geen model. Installeer er een bij Instellingen › Brein.", server.title())),
+                None => Err(nook_core::i18n::trf(
+                    "{server} heeft nog geen model. Installeer er een bij Instellingen › Brein.",
+                    "{server} has no model yet. Install one in Settings › Brain.",
+                    &[("server", &server.title())],
+                )),
             },
-            Err(_) => Err(format!("{} draait niet. Start het, of installeer een lokaal model bij Instellingen › Brein.", server.title())),
+            Err(_) => Err(nook_core::i18n::trf(
+                "{server} draait niet. Start het, of installeer een lokaal model bij Instellingen › Brein.",
+                "{server} is not running. Start it, or install a local model in Settings › Brain.",
+                &[("server", &server.title())],
+            )),
         },
         Plan::Remote { provider, model } => Ok(Arc::new(Engine::new(EngineTarget::remote(provider, &model, state.key_for(provider))))),
         Plan::Unsupported(reason) => Err(reason),
@@ -290,7 +298,7 @@ fn native_handle(_window: &tauri::WebviewWindow) -> isize {
 }
 
 #[cfg(desktop)]
-fn create_ghost(app: &AppHandle, input: &Arc<dyn TextInput>) {
+pub fn create_ghost(app: &AppHandle, input: &Arc<dyn TextInput>) {
     use tauri::{WebviewUrl, WebviewWindowBuilder};
     if app.get_webview_window(GHOST).is_some() {
         return;
@@ -860,10 +868,6 @@ pub fn setup(app: &AppHandle, input: Arc<dyn TextInput>) {
         playground: Mutex::new(None),
         emoji: Mutex::new(stats::load(&stats::emoji_file())),
     });
-    #[cfg(desktop)]
-    if input.available() {
-        create_ghost(app, &input);
-    }
     let mut controller = Controller {
         app: app.clone(),
         input,

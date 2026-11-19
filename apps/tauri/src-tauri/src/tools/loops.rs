@@ -69,8 +69,8 @@ impl ToolSource for Loops {
 
     fn summarize(&self, tool: &str, input: &Value) -> Option<String> {
         match tool {
-            "add_open_loop" => Some(format!("Open punt: {}", text(input, "title"))),
-            "complete_open_loop" => Some(format!("Afvinken: {}", text(input, "id"))),
+            "add_open_loop" => Some(nook_core::i18n::trf("Open punt: {title}", "Open loop: {title}", &[("title", &text(input, "title"))])),
+            "complete_open_loop" => Some(nook_core::i18n::trf("Afvinken: {id}", "Complete: {id}", &[("id", &text(input, "id"))])),
             _ => None,
         }
     }
@@ -80,13 +80,18 @@ impl ToolSource for Loops {
             "add_open_loop" => {
                 let due = DateTime::parse_from_rfc3339(&text(input, "due")).ok().map(|d| d.with_timezone(&Utc));
                 let lp = ctx.store.add_loop(&text(input, "title"), "chat", due);
-                Some(Ok(format!("Toegevoegd: {} [id {}]", lp.title, &lp.id[..8.min(lp.id.len())])))
+                let short_id = &lp.id[..8.min(lp.id.len())];
+                Some(Ok(nook_core::i18n::trf(
+                    "Toegevoegd: {title} [id {id}]",
+                    "Added: {title} [id {id}]",
+                    &[("title", &lp.title), ("id", &short_id)],
+                )))
             }
             "complete_open_loop" => Some(
                 ctx.store
                     .complete_loop_matching(&text(input, "id"))
-                    .map(|l| format!("Afgevinkt: {}", l.title))
-                    .ok_or_else(|| "Dat open punt bestaat niet (meer).".into()),
+                    .map(|l| nook_core::i18n::trf("Afgevinkt: {title}", "Completed: {title}", &[("title", &l.title)]))
+                    .ok_or_else(|| nook_core::i18n::tr("Dat open punt bestaat niet (meer).", "That open loop does not exist (anymore).").into()),
             ),
             _ => None,
         }

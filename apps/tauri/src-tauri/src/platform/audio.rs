@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::Sample;
+use nook_core::i18n::{tr, trf};
 use nook_core::services::audio::Resampler;
 
 pub type Sink = Box<dyn FnMut(&[f32]) + Send>;
@@ -75,15 +76,22 @@ fn spawn_cpal(loopback: bool, mut sink: Sink) -> Result<Recording, String> {
             let host = cpal::default_host();
             let device = if loopback { host.default_output_device() } else { host.default_input_device() };
             let Some(device) = device else {
-                let _ =
-                    ready_tx.send(Err(if loopback { "Geen geluidsuitgang gevonden.".into() } else { "Geen microfoon gevonden.".into() }));
+                let _ = ready_tx.send(Err(if loopback {
+                    tr("Geen geluidsuitgang gevonden.", "No audio output found.").into()
+                } else {
+                    tr("Geen microfoon gevonden.", "No microphone found.").into()
+                }));
                 return;
             };
             let config = if loopback { device.default_output_config() } else { device.default_input_config() };
             let config = match config {
                 Ok(c) => c,
                 Err(e) => {
-                    let _ = ready_tx.send(Err(format!("De microfoon is niet te gebruiken: {e}")));
+                    let _ = ready_tx.send(Err(trf(
+                        "De microfoon is niet te gebruiken: {error}",
+                        "The microphone cannot be used: {error}",
+                        &[("error", &e)],
+                    )));
                     return;
                 }
             };
@@ -126,19 +134,23 @@ fn spawn_cpal(loopback: bool, mut sink: Sink) -> Result<Recording, String> {
                     None,
                 ),
                 other => {
-                    let _ = ready_tx.send(Err(format!("Dit geluidsformaat ({other}) kent Nook niet.")));
+                    let _ = ready_tx.send(Err(trf(
+                        "Dit geluidsformaat ({format}) kent Nook niet.",
+                        "Nook does not support this audio format ({format}).",
+                        &[("format", &other)],
+                    )));
                     return;
                 }
             };
             let stream = match stream {
                 Ok(s) => s,
                 Err(e) => {
-                    let _ = ready_tx.send(Err(format!("Opnemen lukte niet: {e}")));
+                    let _ = ready_tx.send(Err(trf("Opnemen lukte niet: {error}", "Recording failed: {error}", &[("error", &e)])));
                     return;
                 }
             };
             if let Err(e) = stream.play() {
-                let _ = ready_tx.send(Err(format!("Opnemen lukte niet: {e}")));
+                let _ = ready_tx.send(Err(trf("Opnemen lukte niet: {error}", "Recording failed: {error}", &[("error", &e)])));
                 return;
             }
             let _ = ready_tx.send(Ok(()));
@@ -156,7 +168,7 @@ fn spawn_cpal(loopback: bool, mut sink: Sink) -> Result<Recording, String> {
         }
         Err(_) => {
             stop.store(true, Ordering::SeqCst);
-            Err("De microfoon reageert niet.".into())
+            Err(tr("De microfoon reageert niet.", "The microphone is not responding.").into())
         }
     }
 }
@@ -166,7 +178,11 @@ fn parec(mut sink: Sink) -> Result<Recording, String> {
     use std::io::Read;
     use std::process::{Command, Stdio};
     if !super::process::which("parec") {
-        return Err("Het geluid van de computer opnemen kan niet: parec (pulseaudio-utils, ook voor PipeWire) ontbreekt.".into());
+        return Err(tr(
+            "Het geluid van de computer opnemen kan niet: parec (pulseaudio-utils, ook voor PipeWire) ontbreekt.",
+            "Recording computer audio is not available: parec (pulseaudio-utils, also for PipeWire) is missing.",
+        )
+        .into());
     }
     let mut child = Command::new("parec")
         .args(["--device=@DEFAULT_MONITOR@", "--format=float32le", "--rate=16000", "--channels=1", "--latency-msec=100"])
@@ -174,8 +190,8 @@ fn parec(mut sink: Sink) -> Result<Recording, String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|e| format!("parec kon niet starten: {e}"))?;
-    let mut stdout = child.stdout.take().ok_or("Geen uitvoer van parec.")?;
+        .map_err(|e| trf("parec kon niet starten: {error}", "parec could not start: {error}", &[("error", &e)]))?;
+    let mut stdout = child.stdout.take().ok_or_else(|| tr("Geen uitvoer van parec.", "No output from parec."))?;
     let stop = Arc::new(AtomicBool::new(false));
     let flag = stop.clone();
     let thread = std::thread::Builder::new()

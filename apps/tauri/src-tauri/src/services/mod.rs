@@ -107,6 +107,10 @@ pub fn setup(app: &AppHandle) {
 pub fn start(app: &AppHandle) {
     #[cfg(desktop)]
     {
+        let input = app.state::<Services>().platform.text_input.clone();
+        if input.available() {
+            autocomplete::create_ghost(app, &input);
+        }
         windows::create(app);
         screen::start(app);
         think::start(app);

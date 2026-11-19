@@ -56,6 +56,7 @@
     const hex = themeAccent(chosen, look);
     document.documentElement.style.setProperty("--iris", accentCss(hex));
     document.documentElement.style.setProperty("--on-iris", onAccent(hex));
+    document.documentElement.style.setProperty("--orb-base", accentCss(chosen));
   });
 </script>
 

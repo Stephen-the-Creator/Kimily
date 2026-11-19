@@ -20,6 +20,9 @@
   --radius-chat-join: 4px;
   --radius-conversation-card: 16px;
   --radius-pill: 20px;
+  /* The Dynamic Island: the closed pill's lower corners and the open panel's. */
+  --radius-island: 18px;
+  --radius-island-panel: 22px;
   /* NookTheme.TextStyle: one size and weight per kind of text. Use as `font: var(--text-body)`. */
   --text-caption: 500 10.5px/1.35 var(--font);
   --text-detail: 400 12px/1.45 var(--font);
@@ -313,4 +316,75 @@ kbd { font-family: var(--font); }
 ::selection { background: color-mix(in srgb, var(--iris) 25%, transparent); color: var(--paper); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Nook's own colors (the orb drawn in `Orb.svelte`) and its accessories. `--orb-base` is set from the chosen accent
+   by App.svelte; the rest stays the same in every look, like a character's own paint. */
+:root {
+  --orb-base: var(--iris);
+  --orb-light: #ffffff;
+  --orb-ink: #050507;
+  --orb-shade: #00000029;
+  --orb-held-glow: #ffffff40;
+  --orb-heart: #ff6b9a;
+  --orb-cheek: #ff78968c;
+  --acc-band: #18191e;
+  --acc-cup: #23252d;
+  --acc-lens: #0d0e12;
+  --acc-glint: #ffffff73;
+  --acc-gold: #f7c948;
+  --acc-gold-edge: #c88d18;
+  --acc-beanie: #e0566b;
+  --acc-beanie-band: #c23c52;
+  --acc-pom: #f7e7eb;
+  --acc-halo: #ffd966;
+  --acc-halo-glow: #ffd966bf;
+}
+
+/* Island themes (Settings › Appearance › Island theme). One definition for the bar and the preview in Settings:
+   `--notch` fills the island, `--island-edge` draws its rim, `--island-blur` frosts what is behind it. */
+.island-theme-obsidian {
+  --notch: #000000;
+  --island-edge: color-mix(in srgb, var(--orb-base) 20%, transparent);
+  --island-edge-hover: color-mix(in srgb, var(--orb-base) 42%, transparent);
+  --island-glow: color-mix(in srgb, var(--orb-base) 22%, transparent);
+  --island-shadow: 0 8px 24px #00000073;
+  --island-blur: none;
+}
+.island-theme-glass {
+  --notch: #12141ad6;
+  --island-edge: #ffffff29;
+  --island-edge-hover: #ffffff4d;
+  --island-glow: #ffffff1f;
+  --island-shadow: 0 8px 24px #00000059;
+  --island-blur: blur(22px) saturate(1.4);
+}
+.island-theme-tinted {
+  --notch: color-mix(in srgb, var(--orb-base) 16%, #08080c);
+  --island-edge: color-mix(in srgb, var(--orb-base) 40%, transparent);
+  --island-edge-hover: color-mix(in srgb, var(--orb-base) 62%, transparent);
+  --island-glow: color-mix(in srgb, var(--orb-base) 30%, transparent);
+  --island-shadow: 0 8px 24px color-mix(in srgb, var(--orb-base) 18%, #00000073);
+  --island-blur: none;
+}
+.island-theme-light {
+  --notch: #f6f6faf5;
+  --island-edge: #0000001f;
+  --island-edge-hover: #00000038;
+  --island-glow: #0000000f;
+  --island-shadow: 0 8px 20px #00000029;
+  --island-blur: blur(20px);
+  --paper: #16161a;
+  --text2: #4a4a55;
+  --text3: #72727e;
+  --smoke: #00000014;
+  --line: #0000001a;
+  --line2: #00000024;
+  --field: #ffffff;
+  --surface: #ffffff;
+  --well: #ededf2;
+  --canvas: #f6f6fa;
+  --iris: #18181b;
+  --on-iris: #fafafa;
+  color: #16161a;
 }

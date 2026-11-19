@@ -1,5 +1,6 @@
 <script lang="ts">
   // Het hele gesprek uit het transcript van de agent, met zijn denkstappen ingeklapt ertussen.
+  import { tick } from "svelte";
   import { agentApi, type ChatMessage } from "../../lib/agents";
   import { agents } from "../../lib/agents.svelte";
   import Markdown from "../../components/Markdown.svelte";
@@ -15,17 +16,31 @@
   }: { path: string; refreshKey?: string; baseFolder?: string | null } = $props();
   let messages = $state<ChatMessage[]>([]);
   let loading = $state(false);
+  let bottom = $state<HTMLDivElement | null>(null);
+  let lastPath = "";
+  let lastCount = 0;
 
   $effect(() => {
     void refreshKey;
-    if (!path) {
+    const currentPath = path;
+    if (!currentPath) {
       messages = [];
+      lastPath = "";
+      lastCount = 0;
       return;
     }
     loading = true;
-    agentApi.transcript(path).then((m) => {
+    agentApi.transcript(currentPath).then(async (m) => {
+      if (currentPath !== path) return;
+      const shouldScroll = currentPath !== lastPath || m.length > lastCount;
       messages = m;
       loading = false;
+      lastPath = currentPath;
+      lastCount = m.length;
+      if (shouldScroll && m.length > 0) {
+        await tick();
+        bottom?.scrollIntoView({ block: "end" });
+      }
     });
   });
 
@@ -50,6 +65,7 @@
   {:else}
     {#if loading}<p class="faint">{tr("Gesprek lezen…", "Reading conversation…")}</p>{:else if path}<p class="faint">{tr("Nog niets in dit gesprek.", "Nothing in this conversation yet.")}</p>{/if}
   {/each}
+  <div bind:this={bottom} aria-hidden="true"></div>
 </div>
 
 <style>

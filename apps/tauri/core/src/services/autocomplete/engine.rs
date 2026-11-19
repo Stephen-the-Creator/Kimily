@@ -23,6 +23,7 @@ use super::suggestion::{CompletionOptions, CompletionResult};
 use crate::brain::conversations::ollama_base_url;
 use crate::brain::http::lines;
 use crate::brain::profile::{profile_for_server_model, system_memory_gb};
+use crate::i18n::{tr, trf};
 use crate::provider::AIProvider;
 use crate::settings::Settings;
 use crate::{nook_err, NookError, Result};
@@ -90,9 +91,17 @@ pub async fn list_local_models(server: AIProvider) -> Result<Vec<LocalModel>> {
 pub async fn list_local_models_at(server: AIProvider, base: &str) -> Result<Vec<LocalModel>> {
     let client = client(Duration::from_secs(5));
     let url = if server == AIProvider::Ollama { format!("{base}/api/tags") } else { format!("{base}/v1/models") };
-    let response = client.get(url).send().await.map_err(|_| nook_err!("{} draait niet.", server.title()))?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|_| NookError(trf("{server} draait niet.", "{server} is not running.", &[("server", &server.title())])))?;
     if !response.status().is_success() {
-        return Err(nook_err!("{} gaf status {}.", server.title(), response.status().as_u16()));
+        return Err(NookError(trf(
+            "{server} gaf status {status}.",
+            "{server} returned status {status}.",
+            &[("server", &server.title()), ("status", &response.status().as_u16())],
+        )));
     }
     let object: Value = response.json().await.unwrap_or_default();
     let list = object.get("models").or_else(|| object.get("data")).and_then(Value::as_array).cloned().unwrap_or_default();
@@ -411,12 +420,20 @@ impl Engine {
                 }),
             ),
         };
-        let response = request.json(&body).send().await.map_err(|_| nook_err!("{} draait niet.", server.title()))?;
+        let response = request
+            .json(&body)
+            .send()
+            .await
+            .map_err(|_| NookError(trf("{server} draait niet.", "{server} is not running.", &[("server", &server.title())])))?;
         if !response.status().is_success() {
             let status = response.status().as_u16();
             let object: Value = response.json().await.unwrap_or_default();
             let message = object.pointer("/error/message").or_else(|| object.get("error")).and_then(Value::as_str).unwrap_or("");
-            return Err(nook_err!("{} gaf status {status}. {message}", server.title()));
+            return Err(NookError(trf(
+                "{server} gaf status {status}. {message}",
+                "{server} returned status {status}. {message}",
+                &[("server", &server.title()), ("status", &status), ("message", &message)],
+            )));
         }
         let mut stream = Box::pin(lines(response.bytes_stream().map(|r| r.map_err(|e| NookError(e.to_string())))));
         while let Some(line) = stream.next().await {
@@ -431,7 +448,7 @@ impl Engine {
             }
             let Ok(object) = serde_json::from_str::<Value>(data) else { continue };
             if let Some(error) = object.get("error") {
-                let message = error.get("message").and_then(Value::as_str).or(error.as_str()).unwrap_or("onbekende fout");
+                let message = error.get("message").and_then(Value::as_str).or(error.as_str()).unwrap_or_else(|| tr("onbekende fout", "unknown error"));
                 return Err(nook_err!("{}: {message}", server.title()));
             }
             if self.target.backend == Backend::Ollama {
@@ -463,7 +480,11 @@ impl Engine {
     async fn complete_remote(&self, prompt: &CompletionPrompt, options: &CompletionOptions) -> Result<EngineOutput> {
         let key = self.target.key.clone().filter(|k| !k.is_empty());
         if self.target.provider.needs_key() && key.is_none() {
-            return Err(nook_err!("Er is nog geen sleutel voor {}.", self.target.provider.title()));
+            return Err(NookError(trf(
+                "Er is nog geen sleutel voor {name}.",
+                "There is no key for {name} yet.",
+                &[("name", &self.target.provider.title())],
+            )));
         }
         let system = format!(
             "You are an autocomplete engine. Reply with only the words that come right after the user's text, at most {} words, \
@@ -511,12 +532,19 @@ on the same line. Start with a space when the next word is a new word. No quotes
             request = request.bearer_auth(key);
         }
         let title = self.target.provider.title();
-        let response = request.send().await.map_err(|_| nook_err!("Kan {title} niet bereiken."))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|_| NookError(trf("Kan {name} niet bereiken.", "Could not reach {name}.", &[("name", &title)])))?;
         let status = response.status().as_u16();
         let object: Value = response.json().await.unwrap_or_default();
         if !(200..300).contains(&status) {
             let message = object.pointer("/error/message").and_then(Value::as_str).unwrap_or("");
-            return Err(nook_err!("{title} gaf status {status}. {message}"));
+            return Err(NookError(trf(
+                "{server} gaf status {status}. {message}",
+                "{server} returned status {status}. {message}",
+                &[("server", &title), ("status", &status), ("message", &message)],
+            )));
         }
         Ok(object)
     }

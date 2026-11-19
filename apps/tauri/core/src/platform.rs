@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::i18n::{tr, trf};
 pub use crate::services::screen::SeenWindow;
 
 /// De tekst van een venster dat nu op het scherm staat (op de Mac: OCR van ScreenCaptureKit).
@@ -73,7 +74,7 @@ pub trait ScreenReader: Send + Sync {
     }
     /// Leest één app, ook als hij achter andere vensters staat: stukken per venster (titel, tekst).
     fn read_app(&self, query: &str, _limit: usize) -> Result<Vec<(String, String)>, String> {
-        Err(format!("Ik kan {query} op dit platform niet lezen."))
+        Err(trf("Ik kan {query} op dit platform niet lezen.", "I cannot read {query} on this platform.", &[("query", &query)]))
     }
     fn active_app(&self) -> Option<RunningApp> {
         None
@@ -105,7 +106,7 @@ pub trait ScreenReader: Send + Sync {
     }
     /// Een schermafbeelding van het scherm waar de muis is (voor een schermdeel).
     fn capture_screen(&self) -> Result<Capture, String> {
-        Err("Een schermafbeelding maken kan op dit platform niet.".into())
+        Err(tr("Een schermafbeelding maken kan op dit platform niet.", "Taking a screenshot is not supported on this platform.").into())
     }
     /// Seconden sinds de laatste muis- of toetsenbordinvoer.
     fn idle_seconds(&self) -> f64 {
@@ -160,13 +161,13 @@ pub trait MediaControl: Send + Sync {
         None
     }
     fn seek(&self, _seconds: f64) -> Result<(), String> {
-        Err("Doorspoelen kan bij deze speler niet.".into())
+        Err(tr("Doorspoelen kan bij deze speler niet.", "Seeking is not supported by this player.").into())
     }
     fn set_shuffle(&self, _on: bool) -> Result<(), String> {
-        Err("Willekeurig afspelen kan bij deze speler niet.".into())
+        Err(tr("Willekeurig afspelen kan bij deze speler niet.", "Shuffle is not supported by this player.").into())
     }
     fn set_repeat(&self, _on: bool) -> Result<(), String> {
-        Err("Herhalen kan bij deze speler niet.".into())
+        Err(tr("Herhalen kan bij deze speler niet.", "Repeat is not supported by this player.").into())
     }
     /// Het volume van de speler zelf, 0–100.
     fn set_player_volume(&self, percent: u8) -> Result<(), String> {
@@ -193,16 +194,16 @@ pub trait SystemControl: Send + Sync {
     }
     /// De tekst op het klembord; `None` als er geen tekst op staat of het als geheim gemarkeerd is.
     fn clipboard_text(&self) -> Result<Option<String>, String> {
-        Err("Het klembord lezen kan op dit platform niet.".into())
+        Err(tr("Het klembord lezen kan op dit platform niet.", "Reading the clipboard is not supported on this platform.").into())
     }
     /// Zet tekst op het klembord en plakt hem waar de gebruiker typt (Flow). Zegt of het plakken lukte; anders
     /// staat de tekst nog op het klembord.
     fn paste_text(&self, _text: &str) -> Result<bool, String> {
-        Err("Plakken waar je typt kan op dit platform niet.".into())
+        Err(tr("Plakken waar je typt kan op dit platform niet.", "Pasting where you type is not supported on this platform.").into())
     }
     /// Zet een PNG op het klembord (schermdeel kopiëren).
     fn copy_image(&self, _png: &[u8]) -> Result<(), String> {
-        Err("Een afbeelding kopiëren kan op dit platform niet.".into())
+        Err(tr("Een afbeelding kopiëren kan op dit platform niet.", "Copying an image is not supported on this platform.").into())
     }
     /// Zoekt bestanden met de index van het systeem; `None` als die er niet is (dan zoekt de kern zelf).
     fn search_index(&self, _query: &str, _limit: usize) -> Option<Vec<PathBuf>> {
@@ -213,7 +214,11 @@ pub trait SystemControl: Send + Sync {
     }
     /// De tekst van een PDF, als het platform dat kan.
     fn pdf_text(&self, _path: &std::path::Path) -> Result<String, String> {
-        Err("PDF's lezen kan op deze computer niet: installeer pdftotext (poppler-utils).".into())
+        Err(tr(
+            "PDF's lezen kan op deze computer niet: installeer pdftotext (poppler-utils).",
+            "Reading PDFs is not available on this computer: install pdftotext (poppler-utils).",
+        )
+        .into())
     }
 }
 
@@ -339,7 +344,7 @@ pub trait TextInput: Send + Sync {
     fn type_text(&self, text: &str) -> Result<(), String>;
     /// Deletes `delete` characters before the cursor (Backspace) and types `text`: the emoji picker's `:name`.
     fn replace_text(&self, _delete: usize, _text: &str) -> Result<(), String> {
-        Err("Tekst vervangen kan op dit platform niet.".into())
+        Err(tr("Tekst vervangen kan op dit platform niet.", "Replacing text is not supported on this platform.").into())
     }
     /// The emoji picker's card (physical pixels) while it is open: clicks on it are taken, and the picker's keys are
     /// reported. `return_takes`: Return picks (two letters typed).

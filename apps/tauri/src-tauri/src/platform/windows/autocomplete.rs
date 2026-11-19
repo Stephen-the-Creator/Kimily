@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
+use nook_core::i18n::{tr, trf};
 use nook_core::platform::{FieldSkip, FocusedField, InputEvent, ScreenRect, TextInput};
 use nook_core::services::autocomplete::prefs::{ChordKey, KeyChord};
 use windows::core::BOOL;
@@ -364,7 +365,11 @@ fn send_keys(delete: usize, text: &str) -> Result<(), String> {
     if sent as usize == inputs.len() {
         Ok(())
     } else {
-        Err("Windows liet Nook niet typen (een app met meer rechten heeft de focus).".into())
+        Err(tr(
+            "Windows liet Nook niet typen (een app met meer rechten heeft de focus).",
+            "Windows did not let Nook type (an app with higher privileges has focus).",
+        )
+        .into())
     }
 }
 
@@ -499,7 +504,11 @@ impl TextInput for WindowsTextInput {
                 let keyboard: HHOOK = match keyboard {
                     Ok(hook) => hook,
                     Err(e) => {
-                        let _ = tx.send(Err(format!("Windows liet Nook de toetsen niet volgen: {e}")));
+                        let _ = tx.send(Err(trf(
+                            "Windows liet Nook de toetsen niet volgen: {error}",
+                            "Windows did not let Nook follow keystrokes: {error}",
+                            &[("error", &e)],
+                        )));
                         return;
                     }
                 };

@@ -45,7 +45,7 @@
       status =
         (change.install ? tr("{title}: gekoppeld.", "{title}: linked.", { title: change.title }) : tr("{title}: ontkoppeld.", "{title}: unlinked.", { title: change.title })) +
         (backup ? " " + tr("Backup: {path}.", "Backup: {path}.", { path: backup }) : "") +
-        (change.install && change.title !== "Claude-abonnement in de balk" ? " " + tr("Start de agent opnieuw zodat het werkt.", "Restart the agent so it takes effect.") : "");
+        (change.install && !change.path.endsWith("settings.json") ? " " + tr("Start de agent opnieuw zodat het werkt.", "Restart the agent so it takes effect.") : "");
     } catch (e) {
       error = String(e);
     }

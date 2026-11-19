@@ -170,20 +170,34 @@ pub fn outcome(states: &[StepState]) -> PlanState {
         match state {
             StepState::Done(r) | StepState::Verified(r) => done.push(r.clone()),
             StepState::Failed(e) => {
-                failure.get_or_insert(format!("Stap {} mislukt: {e}", index + 1));
+                failure.get_or_insert(nook_core::i18n::trf(
+                    "Stap {n} mislukt: {e}",
+                    "Step {n} failed: {e}",
+                    &[("n", &(index + 1)), ("e", e)],
+                ));
             }
             StepState::Duplicate(_) => {
-                failure.get_or_insert("Een stap is kort geleden al precies zo uitgevoerd en is niet herhaald.".into());
+                failure.get_or_insert(
+                    nook_core::i18n::tr(
+                        "Een stap is kort geleden al precies zo uitgevoerd en is niet herhaald.",
+                        "A step was recently executed in the exact same way and was not repeated.",
+                    )
+                    .into(),
+                );
             }
             _ => {}
         }
     }
     match (failure, done.len()) {
         (Some(f), 0) => PlanState::Failed(f),
-        (Some(f), n) => PlanState::Failed(format!("{n} van {} gelukt. {f}", states.len())),
-        (None, 0) => PlanState::Done("Niets uitgevoerd".into()),
+        (Some(f), n) => PlanState::Failed(nook_core::i18n::trf(
+            "{n} van {total} gelukt. {f}",
+            "{n} of {total} succeeded. {f}",
+            &[("n", &n), ("total", &states.len()), ("f", &f)],
+        )),
+        (None, 0) => PlanState::Done(nook_core::i18n::tr("Niets uitgevoerd", "Nothing executed").into()),
         (None, 1) => PlanState::Done(done.remove(0)),
-        (None, n) => PlanState::Done(format!("{n} acties uitgevoerd")),
+        (None, n) => PlanState::Done(nook_core::i18n::trf("{n} acties uitgevoerd", "{n} actions executed", &[("n", &n)])),
     }
 }
 
@@ -216,7 +230,9 @@ pub async fn run_plan(
         message.plan_state = Some(PlanState::Running);
         Some(message.clone())
     });
-    let Some(message) = message else { return Err("Dit plan kan niet (meer) uitgevoerd worden.".into()) };
+    let Some(message) = message else {
+        return Err(nook_core::i18n::tr("Dit plan kan niet (meer) uitgevoerd worden.", "This plan can no longer be executed.").into());
+    };
     super::chat::updated(app, nook_id);
 
     // Velden die de gebruiker aanpaste voor het uitvoeren, leren Nook zijn gewoontes.
@@ -276,8 +292,9 @@ pub async fn run_plan(
     update(app, nook_id, message_id, |m| {
         m.action_states = states;
         m.plan_state = Some(final_state);
-        if undoable && !m.offers.iter().any(|o| o == "Maak ongedaan") {
-            m.offers.push("Maak ongedaan".into());
+        let undo_label = nook_core::i18n::tr("Maak ongedaan", "Undo");
+        if undoable && !m.offers.iter().any(|o| o == undo_label) {
+            m.offers.push(undo_label.into());
         }
     });
     state.save_chat();

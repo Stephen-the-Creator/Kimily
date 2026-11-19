@@ -4,6 +4,7 @@ import type { Table } from "./catalog";
 export const table: Table = {
   // Inbox and session list
   "Search sessions": { de: "Sitzungen durchsuchen", fr: "Rechercher dans les sessions", es: "Buscar en sesiones" },
+  "Carry out the plan above.": { de: "Führe den Plan oben aus.", fr: "Exécute le plan ci-dessus.", es: "Ejecuta el plan de arriba." },
   "Group by project": { de: "Nach Projekt gruppieren", fr: "Grouper par projet", es: "Agrupar por proyecto" },
   "New session": { de: "Neue Sitzung", fr: "Nouvelle session", es: "Nueva sesión" },
   "Pinned": { de: "Angeheftet", fr: "Épinglées", es: "Fijadas" },

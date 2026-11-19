@@ -38,6 +38,9 @@ export interface Settings {
   accentHex: number;
   hideWhenIdle: boolean;
   panelLarge: boolean;
+  panelSize?: "compact" | "medium" | "large" | "full";
+  islandDisplay?: "pill" | "time" | "media" | "orb";
+  islandHoverOpen?: boolean;
   /// How large an agent notice is in the bar: a card ("detailed") or one line in the bar ("compact").
   agentNotice: "detailed" | "compact" | "system";
   sounds: boolean;

@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use nook_core::i18n::{tr, trf};
 use nook_core::provider::AIProvider;
 use nook_core::services::notes::TimedWord;
 use nook_core::services::prefs::SpeechEngine;
@@ -109,31 +110,46 @@ pub fn engine_ready(app: &AppHandle, purpose_live: bool) -> Result<SpeechEngine,
     match prefs.speech_engine {
         SpeechEngine::Local => {
             if whisper_binary().is_none() {
-                return Err("Voor spraakherkenning op deze computer is whisper.cpp nodig (het programma whisper-cli). Installeer het en kies een model bij Instellingen › Stem en geluid, of kies daar een andere herkenning.".into());
+                return Err(tr(
+                    "Voor spraakherkenning op deze computer is whisper.cpp nodig (het programma whisper-cli). Installeer het en kies een model bij Instellingen › Stem en geluid, of kies daar een andere herkenning.",
+                    "Speech recognition on this computer requires whisper.cpp (the whisper-cli program). Install it and choose a model under Settings › Voice and sound, or choose another recognizer there.",
+                )
+                .into());
             }
             if prefs.whisper_model.trim().is_empty() || !std::path::Path::new(prefs.whisper_model.trim()).is_file() {
-                return Err("Kies het model van whisper.cpp (een ggml-….bin-bestand) bij Instellingen › Stem en geluid.".into());
+                return Err(tr(
+                    "Kies het model van whisper.cpp (een ggml-….bin-bestand) bij Instellingen › Stem en geluid.",
+                    "Choose the whisper.cpp model (a ggml-….bin file) under Settings › Voice and sound.",
+                )
+                .into());
             }
             Ok(SpeechEngine::Local)
         }
         SpeechEngine::Windows => {
             if !cfg!(target_os = "windows") {
-                return Err(
-                    "De spraakherkenning van Windows is er alleen op Windows. Kies een andere bij Instellingen › Stem en geluid.".into()
-                );
+                return Err(tr(
+                    "De spraakherkenning van Windows is er alleen op Windows. Kies een andere bij Instellingen › Stem en geluid.",
+                    "Windows speech recognition is only available on Windows. Choose another under Settings › Voice and sound.",
+                )
+                .into());
             }
             if !purpose_live {
-                return Err("De spraakherkenning van Windows luistert alleen live. De Notetaker heeft whisper.cpp of een externe dienst nodig (Instellingen › Stem en geluid).".into());
+                return Err(tr(
+                    "De spraakherkenning van Windows luistert alleen live. De Notetaker heeft whisper.cpp of een externe dienst nodig (Instellingen › Stem en geluid).",
+                    "Windows speech recognition only listens live. The Notetaker requires whisper.cpp or an external service (Settings › Voice and sound).",
+                )
+                .into());
             }
             Ok(SpeechEngine::Windows)
         }
         engine @ (SpeechEngine::Openai | SpeechEngine::Groq) => {
             let provider = if engine == SpeechEngine::Openai { AIProvider::Openai } else { AIProvider::Groq };
             if app.state::<AppState>().key_for(provider).is_none() {
-                return Err(format!(
-                    "Er is nog geen {}-sleutel voor de spraakherkenning. Plak hem bij Instellingen › Brein ({}).",
-                    provider.title(),
-                    provider.title()
+                let title = provider.title();
+                return Err(trf(
+                    "Er is nog geen {provider}-sleutel voor de spraakherkenning. Plak hem bij Instellingen › Brein ({provider}).",
+                    "There is no {provider} key for speech recognition yet. Paste it under Settings › Brain ({provider}).",
+                    &[("provider", &title)],
                 ));
             }
             Ok(engine)

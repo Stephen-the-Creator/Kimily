@@ -72,18 +72,26 @@ pub struct Platform {
 
 #[cfg(target_os = "linux")]
 pub fn services(app: &AppHandle) -> Platform {
+    use nook_core::i18n::tr;
     Platform {
         screen: Arc::new(linux::LinuxScreen::new()),
         media: Arc::new(linux::LinuxMedia::new()),
         system: Arc::new(linux::LinuxSystem::new(app)),
         speech: Arc::new(linux::speech::LinuxSpeech::new()),
-        dictation: Arc::new(Unavailable(
+        dictation: Arc::new(Unavailable(tr(
             "Spraakherkenning op deze computer zelf kan op Linux met whisper.cpp; kies anders een externe dienst.",
-        )),
-        wake: Arc::new(Unavailable("\"Hé Nook\" kan op Linux niet: er is geen zuinige spraakherkenning op de computer zelf.")),
+            "On-device speech recognition on Linux works with whisper.cpp; otherwise choose an external service.",
+        ))),
+        wake: Arc::new(Unavailable(tr(
+            "\"Hé Nook\" kan op Linux niet: er is geen zuinige spraakherkenning op de computer zelf.",
+            "\"Hey Nook\" is not available on Linux: there is no low-power on-device speech recognition.",
+        ))),
         quiet: Arc::new(linux::LinuxQuiet::new()),
         power: Arc::new(linux::LinuxPower::new()),
-        text_input: Arc::new(Unavailable("Aanvullen in elke app kan (nog) alleen op Windows.")),
+        text_input: Arc::new(Unavailable(tr(
+            "Aanvullen in elke app kan (nog) alleen op Windows.",
+            "Autocomplete in every app is (for now) only available on Windows.",
+        ))),
     }
 }
 
@@ -269,44 +277,78 @@ pub fn service_capabilities(platform: &Platform, base: &mut Capabilities) {
         base.files = true;
         base.flow = base.microphone;
         if !base.speech_output {
-            notes.insert("speechOutput".into(), "Voorlezen kan niet: installeer espeak-ng of speech-dispatcher.".into());
+            notes.insert(
+                "speechOutput".into(),
+                nook_core::i18n::tr(
+                    "Voorlezen kan niet: installeer espeak-ng of speech-dispatcher.",
+                    "Reading aloud is not available: install espeak-ng or speech-dispatcher.",
+                )
+                .into(),
+            );
         }
         if !base.microphone {
-            notes.insert("microphone".into(), "Geen microfoon gevonden.".into());
+            notes.insert("microphone".into(), nook_core::i18n::tr("Geen microfoon gevonden.", "No microphone found.").into());
         }
         if !base.system_audio {
             notes.insert(
                 "systemAudio".into(),
-                "Het geluid van de computer opnemen kan hier niet; de Notetaker neemt alleen je microfoon op.".into(),
+                nook_core::i18n::tr(
+                    "Het geluid van de computer opnemen kan hier niet; de Notetaker neemt alleen je microfoon op.",
+                    "Recording computer audio is not available here; the Notetaker only records your microphone.",
+                )
+                .into(),
             );
         }
         if !base.volume {
             notes.insert(
                 "volume".into(),
-                "Het volume regelen kan niet: installeer PipeWire (wpctl), PulseAudio (pactl) of ALSA (amixer).".into(),
+                nook_core::i18n::tr(
+                    "Het volume regelen kan niet: installeer PipeWire (wpctl), PulseAudio (pactl) of ALSA (amixer).",
+                    "Controlling the volume is not available: install PipeWire (wpctl), PulseAudio (pactl), or ALSA (amixer).",
+                )
+                .into(),
             );
         }
         if !base.screen_part {
             notes.insert(
                 "screenPart".into(),
-                "Een schermdeel kan hier niet: er is geen schermafbeelding (Wayland laat dat apps niet toe).".into(),
+                nook_core::i18n::tr(
+                    "Een schermdeel kan hier niet: er is geen schermafbeelding (Wayland laat dat apps niet toe).",
+                    "Selecting a screen region is not available here: screen capture is not allowed (Wayland does not let apps do that).",
+                )
+                .into(),
             );
         }
     }
     if base.desktop && !base.share_detection {
         notes.insert(
             "shareDetection".into(),
-            "Nook ziet hier niet wanneer je je scherm deelt: zonder X11 (Wayland) zijn de vensters van andere apps onzichtbaar. Een gesprek dat de Notetaker opneemt of een afspraak in je agenda telt wel.".into(),
+            nook_core::i18n::tr(
+                "Nook ziet hier niet wanneer je je scherm deelt: zonder X11 (Wayland) zijn de vensters van andere apps onzichtbaar. Een gesprek dat de Notetaker opneemt of een afspraak in je agenda telt wel.",
+                "Nook cannot tell when you share your screen here: without X11 (Wayland) the windows of other apps are not visible. A call recorded by the Notetaker or a meeting on your calendar still counts.",
+            )
+            .into(),
         );
     }
     if base.desktop && !base.capture_exclusion {
         notes.insert(
             "captureExclusion".into(),
-            "Op Linux kan Nook zich niet uit een gedeeld scherm of schermafbeelding halen; ‘Verbergen voor kijkers’ houdt hem hier alleen stil.".into(),
+            nook_core::i18n::tr(
+                "Op Linux kan Nook zich niet uit een gedeeld scherm of schermafbeelding halen; ‘Verbergen voor kijkers’ houdt hem hier alleen stil.",
+                "On Linux Nook cannot exclude itself from a shared screen or screenshot; 'Hide from viewers' only keeps it quiet here.",
+            )
+            .into(),
         );
     }
     if !base.wake_word {
-        notes.insert("wakeWord".into(), "\"Hé Nook\" kan alleen waar de spraakherkenning op de computer zelf draait (Windows).".into());
+        notes.insert(
+            "wakeWord".into(),
+            nook_core::i18n::tr(
+                "\"Hé Nook\" kan alleen waar de spraakherkenning op de computer zelf draait (Windows).",
+                "\"Hey Nook\" is only available where speech recognition runs on the computer itself (Windows).",
+            )
+            .into(),
+        );
     }
     base.notes = notes;
 }

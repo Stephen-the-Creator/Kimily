@@ -118,11 +118,18 @@ fn normalize(text: &str) -> String {
     text.to_lowercase().chars().filter(|c| c.is_alphanumeric() || *c == ' ').collect::<String>().trim().to_string()
 }
 
-/// De vraag aan het brein als Nook ongevraagd meekijkt (in het Nederlands, zoals op de Mac).
+/// De vraag aan het brein als Nook ongevraagd meekijkt.
 pub fn request(app: &str, window: &str, earlier: &[String]) -> String {
-    let window = if window.is_empty() { String::new() } else { format!(" (venster: {})", window.chars().take(80).collect::<String>()) };
-    let mut request = format!(
-        "[Meedenken] De gebruiker is nu bezig in {app}{window}. Je kijkt ongevraagd mee. Is er één concreet ding dat jij nu voor hem kunt overnemen met een actie-tool (iets inplannen, een herinnering of open punt, een concept schrijven, een app of link openen), of weet je een duidelijk slimmere of snellere aanpak voor wat hij nu doet? Roep bij een actie meteen de tool aan. Begin je tekst met één korte vraag of tip van hooguit acht woorden, zoals \"Zal ik dit in je agenda zetten?\" of \"Tip: dit kan ook in één keer\", daarna hooguit twee zinnen uitleg. Alleen als het hem echt tijd scheelt of voorkomt dat hij iets vergeet; samenvattingen, complimenten of wat hij al doet tellen niet. Twijfel je, antwoord dan alleen NONE."
+    let window_short: String = window.chars().take(80).collect();
+    let window = if window.is_empty() {
+        String::new()
+    } else {
+        crate::i18n::trf(" (venster: {window})", " (window: {window})", &[("window", &window_short)])
+    };
+    let mut request = crate::i18n::trf(
+        "[Meedenken] De gebruiker is nu bezig in {app}{window}. Je kijkt ongevraagd mee. Is er één concreet ding dat jij nu voor hem kunt overnemen met een actie-tool (iets inplannen, een herinnering of open punt, een concept schrijven, een app of link openen), of weet je een duidelijk slimmere of snellere aanpak voor wat hij nu doet? Roep bij een actie meteen de tool aan. Begin je tekst met één korte vraag of tip van hooguit acht woorden, zoals \"Zal ik dit in je agenda zetten?\" of \"Tip: dit kan ook in één keer\", daarna hooguit twee zinnen uitleg. Alleen als het hem echt tijd scheelt of voorkomt dat hij iets vergeet; samenvattingen, complimenten of wat hij al doet tellen niet. Twijfel je, antwoord dan alleen NONE.",
+        "[Think along] The user is currently working in {app}{window}. You are looking along proactively. Is there one concrete thing you can take over right now with an action tool (schedule something, add a reminder or open loop, draft a message, open an app or link), or do you know a clearly smarter or faster approach for what they are doing? For an action, call the tool right away. Start your text with one short question or tip of at most eight words, such as \"Shall I add this to your calendar?\" or \"Tip: you can do this in one step\", followed by at most two sentences of explanation. Only if it genuinely saves time or prevents forgetting something; summaries, compliments, or what they are already doing do not count. If in doubt, reply only NONE.",
+        &[("app", &app), ("window", &window)],
     );
     if !earlier.is_empty() {
         request.push_str(&format!(" You recently offered this; do not repeat it: {}.", earlier.join("; ")));
@@ -246,6 +253,7 @@ mod tests {
 
     #[test]
     fn request_mentions_earlier_offers() {
+        crate::i18n::set_language("nl");
         let text = request("Thunderbird", "Re: offerte", &["zal ik dit inplannen".into()]);
         assert!(text.contains("bezig in Thunderbird (venster: Re: offerte)"));
         assert!(text.ends_with("do not repeat it: zal ik dit inplannen."));

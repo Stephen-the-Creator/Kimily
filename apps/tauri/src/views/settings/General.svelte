@@ -7,6 +7,11 @@
   import type { EnergyMode } from "../../lib/types";
   import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
   import { tr, APP_LANGUAGES, type AppLanguage } from "../../lib/i18n.svelte";
+  import {
+    WEATHER_CITY_KEY, WEATHER_ENABLED_KEY, clearWeatherCache, defaultCity, fetchIslandWeather, weatherCity, weatherEnabled,
+    type IslandWeather,
+  } from "../../lib/weather";
+  import { HIDEABLE_TABS, notifyIslandPrefs, readHiddenTabs, setTabVisible, type HideableTab } from "../../lib/island-tabs";
 
   const s = $derived(nook.settings!);
 
@@ -29,6 +34,46 @@
   let shortcutNote = $state("");
   async function repairShortcut() {
     shortcutNote = await api.repairStartMenuShortcut().then(() => tr("Snelkoppeling in het Startmenu gemaakt.", "Start menu shortcut created."), (e) => String(e));
+  }
+  let showWeather = $state(weatherEnabled());
+  let cityInput = $state(weatherCity());
+  let weatherPreview = $state<IslandWeather | null>(null);
+  function setShowWeather(on: boolean) {
+    showWeather = on;
+    try {
+      localStorage.setItem(WEATHER_ENABLED_KEY, on ? "1" : "0");
+    } catch {}
+    notifyIslandPrefs();
+    if (on) fetchIslandWeather(true).then((w) => (weatherPreview = w)).catch(() => {});
+    else weatherPreview = null;
+  }
+  function saveCity() {
+    const clean = cityInput.trim();
+    cityInput = clean;
+    clearWeatherCache();
+    try {
+      localStorage.setItem(WEATHER_CITY_KEY, clean);
+    } catch {}
+    notifyIslandPrefs();
+    if (showWeather) fetchIslandWeather(true).then((w) => (weatherPreview = w)).catch(() => {});
+  }
+  $effect(() => {
+    if (showWeather) fetchIslandWeather().then((w) => (weatherPreview = w)).catch(() => {});
+  });
+  let hiddenTabs = $state<HideableTab[]>(readHiddenTabs());
+  const tabLabels = $derived<Record<HideableTab, string>>({
+    home: "Home",
+    tasks: tr("Taken", "Tasks"),
+    focus: tr("Focus", "Focus"),
+    notes: tr("Notities", "Notes"),
+    tray: tr("Plank", "Shelf"),
+    chats: tr("Chats", "Chats"),
+    agents: tr("Agents", "Agents"),
+    workspace: tr("Werkruimte", "Workspace"),
+    commands: tr("Commando's", "Commands"),
+  });
+  function toggleTab(tab: HideableTab, visible: boolean) {
+    hiddenTabs = setTabVisible(tab, visible);
   }
   let energy = $state<EnergyView | null>(null);
   $effect(() => {
@@ -73,10 +118,63 @@
       <span>{tr("Lokaal brein zelf starten", "Start the local brain myself")}<br /><small class="faint">{tr("Is Ollama of LM Studio geïnstalleerd maar niet gestart? Dan start Nook hem op de achtergrond.", "Ollama or LM Studio installed but not running? Then Nook starts it in the background.")}</small></span>
       <input type="checkbox" role="switch" checked={s.startLocalBrain} onchange={(e) => nook.saveSettings({ startLocalBrain: e.currentTarget.checked })} />
     </label>
-    <label class="row"><span>{tr("Groter paneel", "Larger panel")}</span><input type="checkbox" role="switch" checked={s.panelLarge} onchange={(e) => nook.saveSettings({ panelLarge: e.currentTarget.checked })} /></label>
+    <label class="row">
+      <span>{tr("Paneelgrootte", "Panel size")}</span>
+      <select value={s.panelSize || (s.panelLarge ? "large" : "medium")} onchange={(e) => nook.saveSettings({ panelSize: e.currentTarget.value as "compact" | "medium" | "large" | "full", panelLarge: e.currentTarget.value === "large" || e.currentTarget.value === "full" })}>
+        <option value="compact">{tr("Compact (520 × 360)", "Compact (520 × 360)")}</option>
+        <option value="medium">{tr("Normaal (680 × 460)", "Medium (680 × 460)")}</option>
+        <option value="large">{tr("Groot (920 × 620)", "Large (920 × 620)")}</option>
+        <option value="full">{tr("Extra groot (75% scherm)", "Extra large (75% screen)")}</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>{tr("Gesloten eiland toont", "Closed island shows")}</span>
+      <select value={s.islandDisplay || "pill"} onchange={(e) => nook.saveSettings({ islandDisplay: e.currentTarget.value as "pill" | "time" | "media" | "orb" })}>
+        <option value="pill">{tr("Dynamic Island (tijd, media & agents)", "Dynamic Island (time, media & agents)")}</option>
+        <option value="time">{tr("Tijd & datum", "Time & date")}</option>
+        <option value="media">{tr("Media & status", "Media & status")}</option>
+        <option value="orb">{tr("Alleen symbool", "Icon only")}</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>{tr("Openen bij aanwijzen", "Open on hover")}<br /><small class="faint">{tr("Beweeg de muis over het eiland om het te openen; klapt vanzelf weer in als je wegbeweegt.", "Hover the island to open it; folds back automatically when you move away.")}</small></span>
+      <input type="checkbox" role="switch" checked={s.islandHoverOpen ?? false} onchange={(e) => nook.saveSettings({ islandHoverOpen: e.currentTarget.checked })} />
+    </label>
+    <label class="row">
+      <span>{tr("Verbergen in rust", "Hide when idle")}<br /><small class="faint">{tr("Schuift het eiland weg als er niets gebeurt; schuift weer tevoorschijn bij de bovenrand, muziek of een agent.", "Tucks the island away when nothing is happening; slides back at the top edge, for music, or an agent.")}</small></span>
+      <input type="checkbox" role="switch" checked={s.hideWhenIdle} onchange={(e) => nook.saveSettings({ hideWhenIdle: e.currentTarget.checked })} />
+    </label>
+    <label class="row">
+      <span>
+        {tr("Weer in het eiland", "Weather in the island")}
+        {#if showWeather && weatherPreview}
+          <br /><small class="faint">{weatherPreview.icon} {Math.round(weatherPreview.temp)} °C · {weatherPreview.place}</small>
+        {/if}
+      </span>
+      <input type="checkbox" role="switch" checked={showWeather} onchange={(e) => setShowWeather(e.currentTarget.checked)} />
+    </label>
+    {#if showWeather}
+      <div class="row">
+        <span>{tr("Locatie voor het weer", "Weather location")}<br /><small class="faint">{tr("Leeg = automatisch via je tijdzone ({city}).", "Empty = automatic from your time zone ({city}).", { city: defaultCity() })}</small></span>
+        <span class="inline">
+          <input placeholder={tr("Stad, bijv. München", "City, e.g. Munich")} bind:value={cityInput} onkeydown={(e) => e.key === "Enter" && saveCity()} onchange={saveCity} />
+          <button onclick={saveCity}>{tr("Bewaar", "Save")}</button>
+        </span>
+      </div>
+    {/if}
   {/if}
 </div>
 {#if nook.info?.capabilities.desktop}
+  <h3>{tr("Tabs in het eiland", "Tabs in the island")}</h3>
+  <div class="group">
+    {#each HIDEABLE_TABS.filter((t) => t !== "workspace" || nook.info?.capabilities.terminals) as t (t)}
+      <label class="row">
+        <span>{tabLabels[t]}</span>
+        <input type="checkbox" role="switch" checked={!hiddenTabs.includes(t)} onchange={(e) => toggleTab(t, e.currentTarget.checked)} />
+      </label>
+    {/each}
+    <p class="faint note">{tr("Verberg tabs die je in het eiland niet gebruikt (Nook blijft altijd zichtbaar).", "Hide tabs you don't use in the island (Nook always stays visible).")}</p>
+  </div>
   <h3>{tr("Energie", "Energy")}</h3>
   <div class="group">
     <div class="row">

@@ -1,14 +1,25 @@
 <script lang="ts">
   import Segmented from "./Segmented.svelte";
+  import Orb, { ACCESSORIES, readAccessory, setAccessory, type Accessory } from "../../components/Orb.svelte";
   // Settings › Appearance (`SettingsView+Appearance` on the Mac): System, Light or Dark for the windows, Nook's color,
-  // and how much room text and rows get. The bar stays dark in every look, as the notch on the Mac does.
+  // Island theme, and how much room text and rows get.
   import { nook, accentCss } from "../../lib/state.svelte";
   import { tr } from "../../lib/i18n.svelte";
   import { ACCENTS, DENSITIES, THEMES, themeAccent, resolveTheme, type Density, type ThemeSetting } from "../../lib/theme";
+  import { notifyIslandPrefs } from "../../lib/island-tabs";
+
+  type IslandTheme = "obsidian" | "glass" | "tinted" | "light";
+  const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light"];
 
   const s = $derived(nook.settings!);
   const themeNames = $derived<Record<ThemeSetting, string>>({
     system: tr("Systeem", "System"), light: tr("Licht", "Light"), dark: tr("Donker", "Dark"),
+  });
+  const islandThemeNames = $derived<Record<IslandTheme, string>>({
+    obsidian: tr("Diepzwart", "Obsidian"),
+    glass: tr("Rookglas", "Glass"),
+    tinted: tr("Getint", "Tinted"),
+    light: tr("Licht", "Light"),
   });
   const densityNames = $derived<Record<Density, string>>({
     compact: tr("Compact", "Compact"), comfortable: tr("Comfortabel", "Comfortable"), spacious: tr("Ruim", "Spacious"),
@@ -16,7 +27,37 @@
   const systemDark = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)").matches : true;
   // The swatches show each accent as it is drawn in the look that applies now.
   const look = $derived(resolveTheme(s.theme, systemDark));
+
+  let islandTheme = $state<IslandTheme>((localStorage.getItem("island.theme") as IslandTheme) || "obsidian");
+  let accessory = $state<Accessory>(readAccessory());
+  const accessoryNames = $derived<Record<Accessory, string>>({
+    none: tr("Geen", "None"),
+    headphones: tr("Koptelefoon", "Headphones"),
+    shades: tr("Zonnebril", "Shades"),
+    crown: tr("Kroon", "Crown"),
+    beanie: tr("Muts", "Beanie"),
+    halo: tr("Stralenkrans", "Halo"),
+  });
+  function pickAccessory(next: Accessory) {
+    accessory = next;
+    setAccessory(next);
+  }
+  function setIslandTheme(next: IslandTheme) {
+    islandTheme = next;
+    try {
+      localStorage.setItem("island.theme", next);
+    } catch {}
+    notifyIslandPrefs();
+  }
 </script>
+
+<div class="preview-stage">
+  <div class="preview-pill island-theme-{islandTheme}">
+    <Orb size={24} mood="idle" movable alive />
+    <span class="preview-title">Nook</span>
+    <span class="preview-time">12:42</span>
+  </div>
+</div>
 
 <h3>{tr("Thema", "Theme")}</h3>
 <div class="group">
@@ -24,7 +65,7 @@
     <span>{tr("Weergave", "Appearance")}</span>
     <Segmented label={tr("Weergave", "Appearance")} value={s.theme} options={THEMES.map((t) => ({ value: t, label: themeNames[t] }))} onchange={(t) => nook.saveSettings({ theme: t })} />
   </div>
-  <p class="faint note">{tr("Systeem volgt de lichte of donkere modus van je computer. De balk blijft in elk thema donker, net als de notch van een Mac.", "System follows your computer's light or dark mode. The bar stays dark in every theme, as the notch of a Mac does.")}</p>
+  <p class="faint note">{tr("Systeem volgt de lichte of donkere modus van je computer.", "System follows your computer's light or dark mode.")}</p>
   <div class="row">
     <span>{tr("Kleur van Nook", "Nook's color")}</span>
     <div class="swatches">
@@ -33,7 +74,20 @@
       {/each}
     </div>
   </div>
-  <p class="faint note">{tr("De kleur van de belangrijkste knoppen. In licht wordt Nooks zachte wit bijna zwart, zodat het leesbaar blijft.", "The color of the main buttons. In light, Nook's soft white turns near-black so it stays readable.")}</p>
+  <p class="faint note">{tr("Kleurt Nook zelf, het accent van het eiland en de belangrijkste knoppen.", "Colors Nook itself, the island accent, and the main buttons.")}</p>
+  <label class="row">
+    <span>{tr("Accessoire", "Accessory")}<br /><small class="faint">{tr("Tip: klik met rechts op Nook om snel te wisselen.", "Tip: right-click Nook to cycle quickly.")}</small></span>
+    <select value={accessory} onchange={(e) => pickAccessory(e.currentTarget.value as Accessory)}>
+      {#each ACCESSORIES as a (a)}<option value={a}>{accessoryNames[a]}</option>{/each}
+    </select>
+  </label>
+  {#if nook.info?.capabilities.desktop}
+    <div class="row">
+      <span>{tr("Eiland-thema", "Island theme")}</span>
+      <Segmented label={tr("Eiland-thema", "Island theme")} value={islandTheme} options={ISLAND_THEMES.map((t) => ({ value: t, label: islandThemeNames[t] }))} onchange={setIslandTheme} />
+    </div>
+    <p class="faint note">{tr("Stijl van het Dynamic Island bovenaan je scherm: diepzwart, halfdoorzichtig glas, in Nooks kleur getint, of licht.", "Style of the Dynamic Island at the top of your screen: deep black, translucent glass, tinted in Nook's color, or light.")}</p>
+  {/if}
 </div>
 <h3>{tr("Tekst en indeling", "Text and layout")}</h3>
 <div class="group">
@@ -46,3 +100,34 @@
   <p class="faint note">{tr("Hoeveel ruimte tekst en rijen krijgen. Compact past meer op het scherm; ruim leest rustiger.", "How much room text and rows get. Compact fits more on screen; spacious reads easier.")}</p>
 </div>
 
+<style>
+  .preview-stage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px 16px;
+    margin-bottom: 14px;
+    border-radius: var(--radius-sheet);
+    background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--orb-base) 18%, transparent), transparent 70%), var(--well);
+    border: 1px solid var(--line);
+  }
+  /* The same island the bar draws: its colors come from `.island-theme-*` in app.css. */
+  .preview-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 196px;
+    height: 38px;
+    padding: 0 14px 0 10px;
+    border-radius: 999px;
+    background: var(--notch);
+    color: var(--paper);
+    border: 1px solid var(--island-edge);
+    box-shadow: var(--island-shadow);
+    backdrop-filter: var(--island-blur);
+    transition: background var(--motion-slow), border-color var(--motion-slow), color var(--motion-slow), box-shadow var(--motion-slow);
+  }
+  .preview-pill:hover { border-color: var(--island-edge-hover); }
+  .preview-title { font: var(--text-detail); font-weight: 600; flex: 1; }
+  .preview-time { font: var(--text-detail); font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0.8; }
+</style>

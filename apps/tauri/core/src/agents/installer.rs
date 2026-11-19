@@ -10,7 +10,8 @@ use serde_json::{json, Map, Value};
 use super::line_diff::{self, DiffKind, DiffLine};
 use super::plugins;
 use super::{home_dir, tilde};
-use crate::{nook_err, Result};
+use crate::i18n::{tr, trf};
+use crate::{NookError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +47,7 @@ impl Target {
     pub fn title(self) -> &'static str {
         match self {
             Self::ClaudeHooks => "Claude Code",
-            Self::ClaudeStatusLine => "Claude-abonnement in de balk",
+            Self::ClaudeStatusLine => tr("Claude-abonnement in de balk", "Claude subscription in the bar"),
             Self::Codex => "Codex",
             Self::Gemini => "Gemini CLI",
             Self::Antigravity => "Antigravity",
@@ -61,12 +62,20 @@ impl Target {
 
     pub fn detail(self) -> &'static str {
         match self {
-            Self::ClaudeHooks => "Voortgang, toestemming en vragen in de balk",
-            Self::ClaudeStatusLine => "Je 5-uurs- en weeklimiet (Pro/Max), via de statusregel",
-            Self::Codex => "Voortgang en toestemming in de balk",
-            Self::Gemini | Self::Antigravity | Self::Cursor | Self::Copilot | Self::Muse => "Voortgang in de balk",
-            Self::OpenCode | Self::Amp => "Voortgang in de balk, via een kleine plugin",
-            Self::Hermes => "Voortgang in de balk, via een plugin. Zet hem daarna aan met: hermes plugins enable nook",
+            Self::ClaudeHooks => tr("Voortgang, toestemming en vragen in de balk", "Progress, permissions and questions in the bar"),
+            Self::ClaudeStatusLine => tr(
+                "Je 5-uurs- en weeklimiet (Pro/Max), via de statusregel",
+                "Your 5-hour and weekly limit (Pro/Max), via the status line",
+            ),
+            Self::Codex => tr("Voortgang en toestemming in de balk", "Progress and permissions in the bar"),
+            Self::Gemini | Self::Antigravity | Self::Cursor | Self::Copilot | Self::Muse => {
+                tr("Voortgang in de balk", "Progress in the bar")
+            }
+            Self::OpenCode | Self::Amp => tr("Voortgang in de balk, via een kleine plugin", "Progress in the bar, via a small plugin"),
+            Self::Hermes => tr(
+                "Voortgang in de balk, via een plugin. Zet hem daarna aan met: hermes plugins enable nook",
+                "Progress in the bar, via a plugin. Enable it afterwards with: hermes plugins enable nook",
+            ),
         }
     }
 
@@ -207,14 +216,20 @@ fn read(path: &Path) -> Result<Snapshot> {
     if !path.exists() {
         return Ok(Snapshot { object: Map::new(), original: None });
     }
-    let data =
-        std::fs::read(path).map_err(|_| nook_err!("{} is niet te lezen. Nook heeft niets aangeraakt.", tilde(&path.to_string_lossy())))?;
+    let shown = tilde(&path.to_string_lossy());
+    let data = std::fs::read(path).map_err(|_| {
+        NookError(trf("{path} is niet te lezen. Nook heeft niets aangeraakt.", "{path} could not be read. Nook did not touch anything.", &[("path", &shown)]))
+    })?;
     if data.iter().all(|b| b.is_ascii_whitespace()) {
         return Ok(Snapshot { object: Map::new(), original: Some(data) });
     }
     match serde_json::from_slice::<Value>(&data) {
         Ok(Value::Object(object)) => Ok(Snapshot { object, original: Some(data) }),
-        _ => Err(nook_err!("{} is geen geldige JSON (of bevat commentaar). Nook heeft niets aangeraakt.", tilde(&path.to_string_lossy()))),
+        _ => Err(NookError(trf(
+            "{path} is geen geldige JSON (of bevat commentaar). Nook heeft niets aangeraakt.",
+            "{path} is not valid JSON (or contains comments). Nook did not touch anything.",
+            &[("path", &shown)],
+        ))),
     }
 }
 
@@ -223,10 +238,16 @@ fn read_plugin(path: &Path) -> Result<Option<Vec<u8>>> {
     if !path.exists() {
         return Ok(None);
     }
-    let data =
-        std::fs::read(path).map_err(|_| nook_err!("{} is niet te lezen. Nook heeft niets aangeraakt.", tilde(&path.to_string_lossy())))?;
+    let shown = tilde(&path.to_string_lossy());
+    let data = std::fs::read(path).map_err(|_| {
+        NookError(trf("{path} is niet te lezen. Nook heeft niets aangeraakt.", "{path} could not be read. Nook did not touch anything.", &[("path", &shown)]))
+    })?;
     if !String::from_utf8_lossy(&data).contains(plugins::MARKER) {
-        return Err(nook_err!("{} bestaat al en is niet door Nook gemaakt. Nook heeft niets aangeraakt.", tilde(&path.to_string_lossy())));
+        return Err(NookError(trf(
+            "{path} bestaat al en is niet door Nook gemaakt. Nook heeft niets aangeraakt.",
+            "{path} already exists and was not created by Nook. Nook did not touch anything.",
+            &[("path", &shown)],
+        )));
     }
     Ok(Some(data))
 }
@@ -308,7 +329,9 @@ fn hooks_object(root: &Map<String, Value>) -> Result<Map<String, Value>> {
     match root.get("hooks") {
         None => Ok(Map::new()),
         Some(Value::Object(o)) => Ok(o.clone()),
-        Some(_) => Err(nook_err!("\"hooks\" heeft een onverwachte vorm. Nook heeft niets aangeraakt.")),
+        Some(_) => Err(NookError(
+            tr("\"hooks\" heeft een onverwachte vorm. Nook heeft niets aangeraakt.", "\"hooks\" has an unexpected shape. Nook did not touch anything.").into(),
+        )),
     }
 }
 
@@ -335,7 +358,11 @@ fn append(hooks: &mut Map<String, Value>, event: &str, group: Value) -> Result<(
             list.push(group);
             Ok(())
         }
-        None => Err(nook_err!("\"hooks\".{event} heeft een onverwachte vorm. Nook heeft niets aangeraakt.")),
+        None => Err(NookError(trf(
+            "\"hooks\".{event} heeft een onverwachte vorm. Nook heeft niets aangeraakt.",
+            "\"hooks\".{event} has an unexpected shape. Nook did not touch anything.",
+            &[("event", &event)],
+        ))),
     }
 }
 
@@ -345,7 +372,11 @@ fn without_nook(hooks: Map<String, Value>) -> Result<Map<String, Value>> {
     for (event, value) in hooks {
         let Value::Array(groups) = value else {
             if contains_marker(&value) {
-                return Err(nook_err!("\"hooks\".{event} heeft een onverwachte vorm. Nook heeft niets aangeraakt."));
+                return Err(NookError(trf(
+                    "\"hooks\".{event} heeft een onverwachte vorm. Nook heeft niets aangeraakt.",
+                    "\"hooks\".{event} has an unexpected shape. Nook did not touch anything.",
+                    &[("event", &event)],
+                )));
             }
             result.insert(event, value);
             continue;
@@ -454,10 +485,11 @@ pub fn prepare(target: Target, install: bool, home: Option<&Path>) -> Result<Cha
         Target::Antigravity => {
             if let Some(existing) = root.get(ANTIGRAVITY_GROUP) {
                 if !contains_marker(existing) {
-                    return Err(nook_err!(
-                        "{} heeft al een groep \"{ANTIGRAVITY_GROUP}\" die niet van Nook is. Nook heeft niets veranderd.",
-                        target.display_path(home)
-                    ));
+                    return Err(NookError(trf(
+                        "{path} heeft al een groep \"{group}\" die niet van Nook is. Nook heeft niets veranderd.",
+                        "{path} already has a \"{group}\" group that was not created by Nook. Nook did not change anything.",
+                        &[("path", &target.display_path(home)), ("group", &ANTIGRAVITY_GROUP)],
+                    )));
                 }
             }
             root.remove(ANTIGRAVITY_GROUP);
@@ -623,7 +655,11 @@ pub fn apply(change: &Change) -> Result<Option<PathBuf>> {
     for file in &change.files {
         let current = if file.path.exists() { std::fs::read(&file.path).ok() } else { None };
         if current != file.original {
-            return Err(nook_err!("{shown} is veranderd sinds de preview. Er is niets geschreven; bekijk het opnieuw."));
+            return Err(NookError(trf(
+                "{path} is veranderd sinds de preview. Er is niets geschreven; bekijk het opnieuw.",
+                "{path} changed since the preview. Nothing was written; please review it again.",
+                &[("path", &shown)],
+            )));
         }
     }
     let pending: Vec<&FileChange> = change.files.iter().filter(|f| f.original != f.updated).collect();
@@ -632,7 +668,13 @@ pub fn apply(change: &Change) -> Result<Option<PathBuf>> {
     for file in pending.iter().filter(|f| f.original.is_some()) {
         let name = file.path.file_name().unwrap_or_default().to_string_lossy().into_owned();
         let target = file.path.with_file_name(format!("{name}.nook-backup-{stamp}"));
-        std::fs::copy(&file.path, &target).map_err(|_| nook_err!("Kon geen backup maken van {shown}. Er is niets geschreven."))?;
+        std::fs::copy(&file.path, &target).map_err(|_| {
+            NookError(trf(
+                "Kon geen backup maken van {path}. Er is niets geschreven.",
+                "Could not make a backup of {path}. Nothing was written.",
+                &[("path", &shown)],
+            ))
+        })?;
         backup.get_or_insert(target);
     }
     for file in pending {
@@ -641,7 +683,13 @@ pub fn apply(change: &Change) -> Result<Option<PathBuf>> {
             None if file.path.exists() => std::fs::remove_file(&file.path),
             None => Ok(()),
         };
-        result.map_err(|e| nook_err!("Kon {shown} niet schrijven: {e}. De backup staat ernaast."))?;
+        result.map_err(|e| {
+            NookError(trf(
+                "Kon {path} niet schrijven: {error}. De backup staat ernaast.",
+                "Could not write {path}: {error}. The backup is next to it.",
+                &[("path", &shown), ("error", &e)],
+            ))
+        })?;
     }
     if let Some(previous) = &change.previous_status_line {
         let _ = crate::paths::write_atomic(&previous_status_line_file(), previous);

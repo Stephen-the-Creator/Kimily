@@ -15,6 +15,7 @@ use crate::connectors::catalog::{self, SourceDescriptor, SourceKind};
 use crate::connectors::hub::{Connector, Env, Scope};
 use crate::connectors::oauth::{self, OAuthAuthorizer};
 use crate::connectors::{short, CResult, ConnectorError, ConnectorItem, ConnectorState, ConnectorStatus, ConnectorStore, ErrorKind, Tone};
+use crate::i18n::{tr, trf};
 
 /// Diensten waarvan de officiële MCP-server een app laat inloggen zonder eigen client-id of geheim.
 #[derive(Debug, Clone, Serialize)]
@@ -70,6 +71,23 @@ pub const REMOTE_SERVICES: [RemoteService; 5] = [
         tagline: "Fouten en prestaties van je apps",
     },
 ];
+
+pub fn remote_services() -> Vec<RemoteService> {
+    REMOTE_SERVICES
+        .iter()
+        .map(|s| RemoteService {
+            tagline: match s.id {
+                "notion" => tr("Pagina’s en databases die je deelt", "Pages and databases you share"),
+                "linear" => tr("Issues, projecten en cycles", "Issues, projects, and cycles"),
+                "stripe" => tr("Omzet, betalingen en klanten", "Revenue, payments, and customers"),
+                "vercel" => tr("Deploys, builds en logs", "Deployments, builds, and logs"),
+                "sentry" => tr("Fouten en prestaties van je apps", "Errors and performance of your apps"),
+                _ => s.tagline,
+            },
+            ..*s
+        })
+        .collect()
+}
 
 // Beheer
 
@@ -204,7 +222,10 @@ impl McpConnector {
             Transport::Stdio { command, arguments } => {
                 if !stdio_supported() {
                     return Err(ConnectorError::kind(
-                        "Een lokaal programma als MCP-server kan op Android niet; gebruik een server met een https-adres.",
+                        tr(
+                            "Een lokaal programma als MCP-server kan op Android niet; gebruik een server met een https-adres.",
+                            "A local program cannot run as an MCP server on Android; use a server with an https address.",
+                        ),
                         ErrorKind::Config,
                     ));
                 }
@@ -330,7 +351,7 @@ impl Connector for McpConnector {
                     .collect();
                 let status = ConnectorStatus::ok(
                     format!("{} tools", tools.len()),
-                    format!("{reads} lezen, {} acties met goedkeuring", tools.len() - reads),
+                    trf("{reads} lezen, {actions} acties met goedkeuring", "{reads} read, {actions} actions with approval", &[("reads", &reads), ("actions", &(tools.len() - reads))]),
                     items,
                     false,
                 );
@@ -425,7 +446,7 @@ pub async fn sign_in(env: &Env, config: &McpServerConfig, open: impl FnOnce(&str
         &loopback.redirect,
     )
     .ok_or(oauth::OAuthError::NoAuthorizationServer)?;
-    open(&authorize).map_err(|e| ConnectorError::new(format!("De browser ging niet open: {e}")))?;
+    open(&authorize).map_err(|e| ConnectorError::new(trf("De browser ging niet open: {e}", "Could not open the browser: {e}", &[("e", &e)])))?;
     let redirect = loopback.redirect.clone();
     let callback = loopback.wait(Duration::from_secs(300)).await?;
     match oauth::parse_callback(&callback, &state, Some(&discovery.server.issuer), &redirect) {

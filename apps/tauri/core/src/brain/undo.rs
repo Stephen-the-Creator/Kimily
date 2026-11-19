@@ -44,7 +44,7 @@ pub fn bracket_id(result: &str) -> Option<String> {
 
 /// "(m:abc123)" achter een onthouden herinnering.
 fn memory_id(result: &str) -> Option<String> {
-    if !result.starts_with("Onthouden:") {
+    if !["Onthouden:", "Remembered:", "Gemerkt:", "Mémorisé :", "Recordado:"].iter().any(|p| result.starts_with(p)) {
         return None;
     }
     let caps = rx!(r"\((m:[0-9a-f]{6})\)\s*$").captures(result).ok()??;

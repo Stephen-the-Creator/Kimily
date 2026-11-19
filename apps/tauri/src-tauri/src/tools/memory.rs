@@ -12,12 +12,13 @@ use crate::brain::BrainState;
 pub struct Memory;
 
 pub fn rejected(reason: &str) -> String {
+    use nook_core::i18n::tr;
     match reason {
-        "secret" => "Wachtwoorden, codes en sleutels onthoudt Nook nooit.",
-        "instruction" => "Dit lijkt een opdracht; Nook onthoudt alleen feiten en voorkeuren.",
-        "link" => "Links onthoudt Nook niet; zet ze in een notitie.",
-        "pinned" => "Deze herinnering heb je vastgezet; pas hem aan bij Instellingen › Geheugen.",
-        _ => "Er staat niets om te onthouden.",
+        "secret" => tr("Wachtwoorden, codes en sleutels onthoudt Nook nooit.", "Nook never remembers passwords, codes, or keys."),
+        "instruction" => tr("Dit lijkt een opdracht; Nook onthoudt alleen feiten en voorkeuren.", "This looks like an instruction; Nook only remembers facts and preferences."),
+        "link" => tr("Links onthoudt Nook niet; zet ze in een notitie.", "Nook does not remember links; put them in a note."),
+        "pinned" => tr("Deze herinnering heb je vastgezet; pas hem aan bij Instellingen › Geheugen.", "You pinned this memory; edit it under Settings › Memory."),
+        _ => tr("Er staat niets om te onthouden.", "There is nothing to remember."),
     }
     .into()
 }
@@ -80,18 +81,21 @@ impl ToolSource for Memory {
     }
 
     fn summarize(&self, tool: &str, input: &Value) -> Option<String> {
+        use nook_core::i18n::{tr, trf};
         match tool {
             "remember" => {
                 let replaces = !text(input, "replaces").is_empty();
-                Some(format!("Onthoud: {}{}", text(input, "text"), if replaces { " (vervangt)" } else { "" }))
+                let suffix = if replaces { tr(" (vervangt)", " (replaces)") } else { "" };
+                Some(trf("Onthoud: {text}{suffix}", "Remember: {text}{suffix}", &[("text", &text(input, "text")), ("suffix", &suffix)]))
             }
-            "forget" => Some(format!("Vergeet: {}", text(input, "what"))),
-            "recall_memory" => Some("Geheugen doorzoeken".into()),
+            "forget" => Some(trf("Vergeet: {what}", "Forget: {what}", &[("what", &text(input, "what"))])),
+            "recall_memory" => Some(tr("Geheugen doorzoeken", "Search memory").into()),
             _ => None,
         }
     }
 
     async fn execute(&self, ctx: &ToolCtx, tool: &str, input: &Value) -> Option<Result<String, String>> {
+        use nook_core::i18n::{tr, trf};
         let state = ctx.app.state::<BrainState>();
         match tool {
             "remember" => {
@@ -106,17 +110,18 @@ impl ToolSource for Memory {
                 );
                 Some(match change {
                     Change::Rejected(reason) => Err(rejected(reason)),
-                    Change::Added(item) => Ok(format!("Onthouden: {} ({})", item.text, item.short_id())),
-                    Change::Reinforced(item) => Ok(format!("Wist ik al: {} ({})", item.text, item.short_id())),
-                    Change::Replaced { new, .. } => Ok(format!("Aangepast: {} ({})", new.text, new.short_id())),
+                    Change::Added(item) => Ok(trf("Onthouden: {text} ({id})", "Remembered: {text} ({id})", &[("text", &item.text), ("id", &item.short_id())])),
+                    Change::Reinforced(item) => Ok(trf("Wist ik al: {text} ({id})", "Already knew: {text} ({id})", &[("text", &item.text), ("id", &item.short_id())])),
+                    Change::Replaced { new, .. } => Ok(trf("Aangepast: {text} ({id})", "Updated: {text} ({id})", &[("text", &new.text), ("id", &new.short_id())])),
                 })
             }
             "forget" => {
                 let removed = state.memory.forget(&text(input, "what"));
                 Some(if removed.is_empty() {
-                    Err("Daar onthoud ik niets over.".into())
+                    Err(tr("Daar onthoud ik niets over.", "I don't remember anything about that.").into())
                 } else {
-                    Ok(format!("{} vergeten: {}", removed.len(), removed.iter().map(|i| i.text.as_str()).collect::<Vec<_>>().join("; ")))
+                    let joined = removed.iter().map(|i| i.text.as_str()).collect::<Vec<_>>().join("; ");
+                    Ok(trf("{n} vergeten: {items}", "Forgot {n}: {items}", &[("n", &removed.len()), ("items", &joined)]))
                 })
             }
             _ => None,

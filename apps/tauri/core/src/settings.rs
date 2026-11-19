@@ -73,6 +73,12 @@ pub struct Settings {
     pub accent_hex: u32,
     pub hide_when_idle: bool,
     pub panel_large: bool,
+    /// Size preset for the open top-bar panel ("compact", "medium", "large", "full").
+    pub panel_size: String,
+    /// What the closed top-bar island shows ("pill", "time", "media", "orb").
+    pub island_display: String,
+    /// Open the island panel when hovering the closed pill.
+    pub island_hover_open: bool,
     /// How large the bar's notification is when an agent (terminal or Workspace) finishes, fails or waits on you:
     /// "detailed" (a card with the summary and what changed), "compact" (one slim line in the bar) or "system" (a system
     /// notification, with Allow and Deny on a permission request; `nook_core::services::toast`).
@@ -193,6 +199,9 @@ impl Default for Settings {
             accent_hex: 0xF4_F3_F7,
             hide_when_idle: false,
             panel_large: false,
+            panel_size: "medium".into(),
+            island_display: "pill".into(),
+            island_hover_open: false,
             agent_notice: "detailed".into(),
             sounds: true,
             speak_answers: false,
@@ -288,6 +297,15 @@ impl Settings {
         crate::brain::access::NookAccess::migrated(self.nook_access, self.auto_run_safe)
     }
 
+    /// The chosen panel size preset ("compact", "medium", "large", "full"), migrating the legacy `panel_large` toggle.
+    pub fn effective_panel_size(&self) -> &str {
+        match self.panel_size.as_str() {
+            "compact" | "medium" | "large" | "full" => self.panel_size.as_str(),
+            _ if self.panel_large => "large",
+            _ => "medium",
+        }
+    }
+
     pub fn selection(&self) -> BrainSelection {
         BrainSelection::resolve(self.provider, self.active_model())
     }
@@ -319,7 +337,7 @@ impl Settings {
     /// Korte naam voor de chip bij het invoerveld: "Ollama · llama3.2".
     pub fn brain_label(&self) -> String {
         let model = self.active_model();
-        let name = if model.is_empty() { "eerste model".to_string() } else { model };
+        let name = if model.is_empty() { crate::i18n::tr("eerste model", "first model").to_string() } else { model };
         let title = self.provider.title().split(" (").next().unwrap_or(self.provider.title());
         format!("{title} · {name}")
     }

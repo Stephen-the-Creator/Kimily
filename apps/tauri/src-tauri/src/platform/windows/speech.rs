@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
+use nook_core::i18n::{tr, trf};
 use nook_core::platform::{Dictation, SpeechOutput, WakeWord};
 use windows::core::HSTRING;
 use windows::Foundation::TypedEventHandler;
@@ -103,7 +104,11 @@ impl SpeechOutput for WindowsSpeech {
 
     fn enqueue(&self, text: &str, language: &str) -> Result<(), String> {
         if !self.available {
-            return Err("Voorlezen kan niet: Windows heeft geen stemmen geïnstalleerd (Instellingen › Tijd en taal › Spraak).".into());
+            return Err(tr(
+                "Voorlezen kan niet: Windows heeft geen stemmen geïnstalleerd (Instellingen › Tijd en taal › Spraak).",
+                "Reading aloud is not available: Windows has no voices installed (Settings › Time & language › Speech).",
+            )
+            .into());
         }
         let text: String = text.trim().chars().take(1200).collect();
         if text.is_empty() {
@@ -156,9 +161,10 @@ impl WindowsDictation {
 }
 
 fn explain(e: windows::core::Error) -> String {
-    format!(
-        "De spraakherkenning van Windows werkt niet: {}. Zet Online spraakherkenning aan bij Instellingen › Privacy › Spraak, of kies een andere herkenning.",
-        e.message()
+    trf(
+        "De spraakherkenning van Windows werkt niet: {error}. Zet Online spraakherkenning aan bij Instellingen › Privacy › Spraak, of kies een andere herkenning.",
+        "Windows speech recognition is not working: {error}. Turn on Online speech recognition in Settings › Privacy › Speech, or choose another recognizer.",
+        &[("error", &e.message())],
     )
 }
 
@@ -175,10 +181,11 @@ impl Dictation for WindowsDictation {
         recognizer.Constraints().and_then(|c| c.Append(&constraint)).map_err(explain)?;
         let compiled = recognizer.CompileConstraintsAsync().and_then(|o| o.join()).map_err(explain)?;
         if compiled.Status().map_err(explain)? != SpeechRecognitionResultStatus::Success {
-            return Err(
-                "De spraakherkenning van Windows kon niet starten. Staat Online spraakherkenning aan (Instellingen › Privacy › Spraak)?"
-                    .into(),
-            );
+            return Err(tr(
+                "De spraakherkenning van Windows kon niet starten. Staat Online spraakherkenning aan (Instellingen › Privacy › Spraak)?",
+                "Windows speech recognition could not start. Is Online speech recognition turned on (Settings › Privacy › Speech)?",
+            )
+            .into());
         }
         *self.heard.lock().unwrap_or_else(|e| e.into_inner()) = Heard::default();
         let heard = self.heard.clone();
@@ -269,14 +276,18 @@ impl WakeWord for WindowsWake {
             Some(l) => SpeechRecognizer::Create(&l),
             None => SpeechRecognizer::new(),
         }
-        .map_err(|e| format!("\"Hé Nook\" kan niet starten: {}", e.message()))?;
+        .map_err(|e| trf("\"Hé Nook\" kan niet starten: {error}", "\"Hey Nook\" could not start: {error}", &[("error", &e.message())]))?;
         let phrases: windows_collections::IIterable<HSTRING> =
             ["hé nook", "hey nook", "hee nook", "hoi nook", "hallo nook"].into_iter().map(HSTRING::from).collect::<Vec<_>>().into();
         let constraint = SpeechRecognitionListConstraint::Create(&phrases).map_err(|e| e.message().to_string())?;
         recognizer.Constraints().and_then(|c| c.Append(&constraint)).map_err(|e| e.message().to_string())?;
         let compiled = recognizer.CompileConstraintsAsync().and_then(|o| o.join()).map_err(|e| e.message().to_string())?;
         if compiled.Status().map_err(|e| e.message().to_string())? != SpeechRecognitionResultStatus::Success {
-            return Err("\"Hé Nook\" kan niet starten: installeer een spraaktaal bij Instellingen › Tijd en taal › Spraak.".into());
+            return Err(tr(
+                "\"Hé Nook\" kan niet starten: installeer een spraaktaal bij Instellingen › Tijd en taal › Spraak.",
+                "\"Hey Nook\" could not start: install a speech language in Settings › Time & language › Speech.",
+            )
+            .into());
         }
         let session = recognizer.ContinuousRecognitionSession().map_err(|e| e.message().to_string())?;
         let on_wake = Arc::new(on_wake);

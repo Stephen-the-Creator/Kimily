@@ -80,7 +80,7 @@
     void plan;
     await workspace.act(async () => {
       await workspaceApi.configure(runId, { mode: "agent" });
-      await workspaceApi.send(runId, "Voer het plan hierboven uit.");
+      await workspaceApi.send(runId, tr("Voer het plan hierboven uit.", "Carry out the plan above."));
     });
   }
 

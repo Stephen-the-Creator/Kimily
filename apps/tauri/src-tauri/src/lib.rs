@@ -65,18 +65,23 @@ pub fn run() {
             agents::setup(app.handle());
             workspace::setup(app.handle());
             games::setup(app.handle());
-            services::start(app.handle());
-            #[cfg(desktop)]
-            games::start(app.handle());
-            #[cfg(desktop)]
-            {
-                platform::desktop::setup(app.handle())?;
-                // `nook --window` (bv. vanuit het startmenu) opent meteen het hoofdvenster.
-                let args: Vec<String> = std::env::args().collect();
-                if let Some(route) = platform::desktop::route_from_args(&args) {
-                    platform::desktop::show_main(app.handle(), route);
+            // On Windows, `WebviewWindowBuilder::build()` must not run on the main thread inside `setup()` (Wry/WebView2
+            // deadlocks when pumping the Win32 event loop during setup). Spawn window creation onto the async runtime.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                services::start(&handle);
+                #[cfg(desktop)]
+                games::start(&handle);
+                #[cfg(desktop)]
+                {
+                    let _ = platform::desktop::setup(&handle);
+                    // `nook --window` (bv. vanuit het startmenu) opent meteen het hoofdvenster.
+                    let args: Vec<String> = std::env::args().collect();
+                    if let Some(route) = platform::desktop::route_from_args(&args) {
+                        platform::desktop::show_main(&handle, route);
+                    }
                 }
-            }
+            });
             #[cfg(mobile)]
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.show();
@@ -99,6 +104,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
+            commands::island_weather,
+            commands::clipboard_read,
             commands::get_settings,
             commands::instructions::instructions_view,
             commands::instructions::prompt_save,
@@ -134,6 +141,7 @@ pub fn run() {
             commands::execute_plan,
             commands::cancel_plan,
             commands::open_loops,
+            commands::add_loop,
             commands::complete_loop,
             commands::audit_entries,
             commands::clear_audit,

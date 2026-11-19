@@ -3,6 +3,7 @@
 //! geluidsuitgang (Core Audio).
 
 use base64::Engine as _;
+use nook_core::i18n::trf;
 use nook_core::platform::{MediaCommand, MediaControl, NowPlaying};
 use windows::Media::Control::{
     GlobalSystemMediaTransportControlsSession as Session, GlobalSystemMediaTransportControlsSessionManager as Manager,
@@ -30,7 +31,7 @@ fn session() -> windows::core::Result<Session> {
 }
 
 fn fail(e: windows::core::Error) -> String {
-    format!("De mediabediening van Windows weigerde: {}", e.message())
+    trf("De mediabediening van Windows weigerde: {error}", "Windows media controls refused: {error}", &[("error", &e.message())])
 }
 
 /// "Spotify.exe" of "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" → "Spotify".

@@ -79,8 +79,12 @@ pub fn save_settings(app: AppHandle, state: State<'_, AppState>, settings: Setti
         if before.shortcuts != saved.shortcuts {
             crate::platform::desktop::register_shortcuts(&app);
         }
-        if before.placement != saved.placement || before.panel_large != saved.panel_large {
-            crate::platform::desktop::place_bar(&app, false);
+        if before.placement != saved.placement
+            || before.panel_large != saved.panel_large
+            || before.panel_size != saved.panel_size
+            || before.island_display != saved.island_display
+        {
+            crate::platform::desktop::reset_panel_size(&app);
         }
         if before.provider != saved.provider && saved.start_local_brain {
             crate::platform::desktop::start_local_brain(&app, saved.provider);
@@ -279,6 +283,15 @@ pub fn open_loops(state: State<'_, AppState>) -> Vec<OpenLoop> {
 }
 
 #[tauri::command]
+pub fn add_loop(state: State<'_, AppState>, title: String, due: Option<String>) -> OpenLoop {
+    let due_dt = due
+        .as_deref()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|d| d.with_timezone(&chrono::Utc));
+    state.store.add_loop(title.trim(), "manual", due_dt)
+}
+
+#[tauri::command]
 pub fn complete_loop(state: State<'_, AppState>, id: String) {
     state.store.complete_loop(&id);
 }
@@ -296,13 +309,36 @@ pub fn clear_audit(state: State<'_, AppState>) {
 // Vensters
 
 /// Opens or closes the bar; `notice` keeps it closed but wide enough for a compact agent notice, `chip` keeps it closed
-/// with room under the round Nook for a chat chip.
+/// with room under the round Nook for a chat chip, `wide` widens the closed Dynamic Island pill for media/status.
 #[tauri::command]
-pub fn bar_expand(app: AppHandle, expanded: bool, notice: Option<bool>, chip: Option<bool>) {
+pub fn bar_expand(app: AppHandle, expanded: bool, notice: Option<bool>, chip: Option<bool>, wide: Option<bool>) {
     #[cfg(desktop)]
-    crate::platform::desktop::place_bar_sized(&app, expanded, notice.unwrap_or(false), chip.unwrap_or(false));
+    crate::platform::desktop::place_bar_sized(
+        &app,
+        expanded,
+        notice.unwrap_or(false),
+        chip.unwrap_or(false),
+        wide.unwrap_or(false),
+    );
     #[cfg(not(desktop))]
-    let _ = (app, expanded, notice, chip);
+    let _ = (app, expanded, notice, chip, wide);
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IslandWeatherDto {
+    place: String,
+    temp: f64,
+    code: i64,
+}
+
+#[tauri::command]
+pub async fn island_weather(state: State<'_, AppState>, place: Option<String>) -> Res<Option<IslandWeatherDto>> {
+    let settings = state.settings();
+    let tz = crate::brain::timezone().unwrap_or_else(|| "Europe/Berlin".into());
+    let query = place.unwrap_or_default();
+    let res = nook_core::brain::weather::current(&query, &tz, &settings.app_language).await.map_err(|e| e.0)?;
+    Ok(res.map(|(place, temp, code)| IslandWeatherDto { place, temp, code }))
 }
 
 #[tauri::command]
@@ -417,4 +453,10 @@ pub fn repair_start_menu_shortcut() -> Res<String> {
 #[tauri::command]
 pub async fn read_answer_image(source: String, base: Option<String>) -> Option<String> {
     tokio::task::spawn_blocking(move || nook_core::brain::answer_images::load_local(&source, base.as_deref())).await.ok().flatten()
+}
+
+/// Reads the current system clipboard text for the Dynamic Island's clipboard history.
+#[tauri::command]
+pub fn clipboard_read(services: State<'_, crate::services::Services>) -> Option<String> {
+    services.platform.system.clipboard_text().ok().flatten()
 }

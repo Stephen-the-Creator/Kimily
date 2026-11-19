@@ -6,6 +6,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use nook_core::i18n::{tr, trf};
 use nook_core::platform::{InstalledApp, SystemControl};
 use nook_core::services::{files, fuzzy};
 use tauri::AppHandle;
@@ -124,7 +125,11 @@ fn paste_keys() -> Result<(), String> {
     if sent as usize == inputs.len() {
         Ok(())
     } else {
-        Err("Windows liet Nook niet plakken (een app met meer rechten heeft de focus).".into())
+        Err(tr(
+            "Windows liet Nook niet plakken (een app met meer rechten heeft de focus).",
+            "Windows did not let Nook paste (an app with higher privileges has focus).",
+        )
+        .into())
     }
 }
 
@@ -156,13 +161,25 @@ impl SystemControl for WindowsSystem {
     fn open_app(&self, name: &str) -> Result<(), String> {
         let clean = name.trim();
         if clean.is_empty() || clean.starts_with('-') || clean.contains(['/', '\\', '"']) {
-            return Err("Ongeldige appnaam.".into());
+            return Err(tr("Ongeldige appnaam.", "Invalid app name.").into());
         }
         let apps = self.apps();
         let names: Vec<String> = apps.iter().map(|a| a.name.clone()).collect();
-        let found = fuzzy::best(clean, &names).ok_or_else(|| format!("Geen app met de naam {clean} gevonden op deze computer."))?;
-        let app = apps.iter().find(|a| a.name == found).ok_or_else(|| format!("Geen app met de naam {clean} gevonden."))?;
-        Command::new("explorer.exe").arg(&app.launch).spawn().map(|_| ()).map_err(|e| format!("{found} kon niet starten: {e}"))
+        let found = fuzzy::best(clean, &names).ok_or_else(|| {
+            trf(
+                "Geen app met de naam {name} gevonden op deze computer.",
+                "No app named {name} found on this computer.",
+                &[("name", &clean)],
+            )
+        })?;
+        let app = apps.iter().find(|a| a.name == found).ok_or_else(|| {
+            trf("Geen app met de naam {name} gevonden.", "No app named {name} found.", &[("name", &clean)])
+        })?;
+        Command::new("explorer.exe")
+            .arg(&app.launch)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| trf("{name} kon niet starten: {error}", "{name} could not start: {error}", &[("name", &found), ("error", &e)]))
     }
 
     fn open_url(&self, url: &str) -> Result<(), String> {
@@ -182,12 +199,14 @@ impl SystemControl for WindowsSystem {
         if clipboard_is_secret() {
             return Ok(None);
         }
-        let mut board = arboard::Clipboard::new().map_err(|e| format!("Het klembord is niet bereikbaar: {e}"))?;
+        let mut board = arboard::Clipboard::new()
+            .map_err(|e| trf("Het klembord is niet bereikbaar: {error}", "The clipboard is not available: {error}", &[("error", &e)]))?;
         Ok(board.get_text().ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()))
     }
 
     fn paste_text(&self, text: &str) -> Result<bool, String> {
-        let mut board = arboard::Clipboard::new().map_err(|e| format!("Het klembord is niet bereikbaar: {e}"))?;
+        let mut board = arboard::Clipboard::new()
+            .map_err(|e| trf("Het klembord is niet bereikbaar: {error}", "The clipboard is not available: {error}", &[("error", &e)]))?;
         let previous = board.get_text().ok();
         board.set_text(text.to_string()).map_err(|e| e.to_string())?;
         std::thread::sleep(Duration::from_millis(60));
@@ -251,7 +270,11 @@ impl SystemControl for WindowsSystem {
 
     fn pdf_text(&self, path: &Path) -> Result<String, String> {
         if !process::which("pdftotext") {
-            return Err("PDF's lezen kan op deze computer niet: zet pdftotext (Poppler voor Windows) op het PATH.".into());
+            return Err(tr(
+                "PDF's lezen kan op deze computer niet: zet pdftotext (Poppler voor Windows) op het PATH.",
+                "Reading PDFs is not available on this computer: put pdftotext (Poppler for Windows) on the PATH.",
+            )
+            .into());
         }
         let path = path.to_string_lossy().to_string();
         process::run_text("pdftotext", &["-layout", "-enc", "UTF-8", &path, "-"], Duration::from_secs(20))

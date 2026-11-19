@@ -25,6 +25,7 @@ use super::{
 use crate::brain::LoopTool;
 use crate::connectors::hub::{Connector, Env, Scope};
 use crate::connectors::{CResult, ConnectorError, ConnectorItem, ConnectorState, ConnectorStatus, ErrorKind, Tone};
+use crate::i18n::{tr, trf};
 
 /// How many of the phone's chats Nook lists at most: every one the gateway knows, short of an account so large that
 /// listing it would slow the chat list and search down.
@@ -493,10 +494,22 @@ impl WhatsAppLink {
                 status_line: status_text(i.link.as_ref().unwrap_or(&Link::Off), i.me.as_deref()),
                 webhook_line: match &webhook {
                     Webhook::Off => String::new(),
-                    Webhook::Listening => format!("Wacht op berichten op 127.0.0.1:{port}…"),
-                    Webhook::Registered => "Nieuwe berichten komen direct binnen.".into(),
-                    Webhook::PortBusy => format!("Poort {port} is bezet: Nook kijkt elke 20 seconden zelf."),
-                    Webhook::Refused(why) => format!("De koppeling weigerde de webhook ({why}): Nook kijkt elke 20 seconden zelf."),
+                    Webhook::Listening => trf(
+                        "Wacht op berichten op 127.0.0.1:{port}…",
+                        "Waiting for messages on 127.0.0.1:{port}…",
+                        &[("port", &port)],
+                    ),
+                    Webhook::Registered => tr("Nieuwe berichten komen direct binnen.", "New messages arrive right away.").into(),
+                    Webhook::PortBusy => trf(
+                        "Poort {port} is bezet: Nook kijkt elke 20 seconden zelf.",
+                        "Port {port} is busy: Nook checks every 20 seconds itself.",
+                        &[("port", &port)],
+                    ),
+                    Webhook::Refused(why) => trf(
+                        "De koppeling weigerde de webhook ({why}): Nook kijkt elke 20 seconden zelf.",
+                        "The bridge refused the webhook ({why}): Nook checks every 20 seconds itself.",
+                        &[("why", why)],
+                    ),
                 },
                 webhook,
                 qr: i.qr.as_ref().map(|png| format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png))),
@@ -1474,12 +1487,24 @@ impl WhatsAppLink {
 
 fn status_text(link: &Link, me: Option<&str>) -> String {
     match link {
-        Link::Off => "Uit".into(),
-        Link::Connecting => "Verbinden met de koppeling…".into(),
-        Link::NeedsQr => "Nog niet gekoppeld: scan de QR-code met WhatsApp op je telefoon.".into(),
-        Link::Connected => format!("Gekoppeld {}", me.map(jid::display_number).unwrap_or_default()).trim().to_string(),
-        Link::Unreachable => "De WhatsApp-koppeling op deze computer antwoordt niet. Draait hij?".into(),
-        Link::Unauthorized => "De koppeling weigert het wachtwoord of de sleutel. Kijk bij Geavanceerd.".into(),
+        Link::Off => tr("Uit", "Off").into(),
+        Link::Connecting => tr("Verbinden met de koppeling…", "Connecting to the bridge…").into(),
+        Link::NeedsQr => tr(
+            "Nog niet gekoppeld: scan de QR-code met WhatsApp op je telefoon.",
+            "Not linked yet: scan the QR code with WhatsApp on your phone.",
+        )
+        .into(),
+        Link::Connected => format!("{} {}", tr("Gekoppeld", "Linked"), me.map(jid::display_number).unwrap_or_default()).trim().to_string(),
+        Link::Unreachable => tr(
+            "De WhatsApp-koppeling op deze computer antwoordt niet. Draait hij?",
+            "The WhatsApp bridge on this computer is not responding. Is it running?",
+        )
+        .into(),
+        Link::Unauthorized => tr(
+            "De koppeling weigert het wachtwoord of de sleutel. Kijk bij Geavanceerd.",
+            "The bridge rejected the password or key. Check Advanced.",
+        )
+        .into(),
         Link::Failed(why) => why.clone(),
     }
 }

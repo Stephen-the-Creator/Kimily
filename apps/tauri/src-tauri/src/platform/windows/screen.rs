@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use nook_core::i18n::{tr, trf};
 use nook_core::platform::{Capture, MenuCommandOutcome, RunningApp, ScreenReader, SeenWindow, WindowText};
 use nook_core::services::{fuzzy, screen};
 use windows::core::{BOOL, BSTR, HSTRING, PWSTR};
@@ -389,14 +390,18 @@ impl ScreenReader for WindowsScreen {
     fn read_app(&self, query: &str, limit: usize) -> Result<Vec<(String, String)>, String> {
         let wanted = query.trim();
         if wanted.is_empty() {
-            return Err("Welke app wil je lezen?".into());
+            return Err(tr("Welke app wil je lezen?", "Which app do you want to read?").into());
         }
         let list = self.list();
         let mut names: Vec<String> = list.iter().flat_map(|w| [w.name.clone(), w.exe.clone()]).collect();
         names.sort();
         names.dedup();
         let Some(found) = fuzzy::best(wanted, &names) else {
-            return Err(format!("{wanted} is nu niet geopend. Vraag Nook \"open {wanted}\", dan kan hij daarna meelezen."));
+            return Err(trf(
+                "{name} is nu niet geopend. Vraag Nook \"open {name}\", dan kan hij daarna meelezen.",
+                "{name} is not open right now. Ask Nook \"open {name}\" so it can read along.",
+                &[("name", &wanted)],
+            ));
         };
         let mut sections = Vec::new();
         let mut remaining = limit;
@@ -410,7 +415,7 @@ impl ScreenReader for WindowsScreen {
             }
         }
         if sections.is_empty() {
-            return Err(format!("{found} heeft op dit moment geen leesbare tekst."));
+            return Err(trf("{name} heeft op dit moment geen leesbare tekst.", "{name} has no readable text right now.", &[("name", &found)]));
         }
         Ok(sections)
     }
@@ -455,7 +460,7 @@ impl ScreenReader for WindowsScreen {
                 GetSystemMetrics(SM_CYVIRTUALSCREEN),
             )
         };
-        let (rgba, width, height) = grab(None, x, y, w, h).ok_or("De schermafbeelding mislukte.")?;
+        let (rgba, width, height) = grab(None, x, y, w, h).ok_or_else(|| tr("De schermafbeelding mislukte.", "The screenshot failed."))?;
         Ok(Capture { png: imaging::png(&rgba, width, height)?, width, height })
     }
 

@@ -9,6 +9,7 @@ use nook_core::agents::models::{AgentApproval, AgentSession, ApprovalDecision, P
 use nook_core::agents::profiles::{AgentAuthMethod, AgentProfile};
 use nook_core::agents::transcript::{self, AgentChatMessage};
 use nook_core::agents::{scanner, AgentKind};
+use nook_core::i18n::{tr, trf};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -62,7 +63,11 @@ pub fn agents_answer(app: AppHandle, state: State<'_, AgentsState>, id: String, 
 #[tauri::command]
 pub fn agents_answer_in_terminal(state: State<'_, AgentsState>, id: String) -> Res<()> {
     if id.starts_with("runq:") {
-        return Err("Deze sessie draait in Nook zelf, niet in een terminal. Beantwoord de vraag hier.".into());
+        return Err(tr(
+            "Deze sessie draait in Nook zelf, niet in een terminal. Beantwoord de vraag hier.",
+            "This session runs inside Nook itself, not in a terminal. Answer the question here.",
+        )
+        .into());
     }
     let host = state
         .hub
@@ -78,7 +83,11 @@ pub fn agents_answer_in_terminal(state: State<'_, AgentsState>, id: String) -> R
 #[tauri::command]
 pub fn agents_decide_in_terminal(state: State<'_, AgentsState>, id: String) -> Res<()> {
     if !id.starts_with("hook-") {
-        return Err("Deze sessie draait in Nook zelf, niet in een terminal. Beslis hier.".into());
+        return Err(tr(
+            "Deze sessie draait in Nook zelf, niet in een terminal. Beslis hier.",
+            "This session runs inside Nook itself, not in a terminal. Decide here.",
+        )
+        .into());
     }
     let request = id.strip_prefix("hook-").unwrap_or(&id).to_string();
     let host = state.hub.sessions().into_iter().find(|s| s.approval_id.as_deref() == Some(request.as_str())).map(|s| s.host);
@@ -92,10 +101,14 @@ pub fn agents_end(state: State<'_, AgentsState>, session_id: String) -> Res<()> 
     let name =
         state.hub.sessions().into_iter().chain(state.hub.detected()).find(|s| s.id == session_id).map(|s| s.name).unwrap_or_default();
     let Some(pid) = state.hub.process_id(&session_id) else {
-        return Err(format!("Nook weet niet zeker welk proces van {name} dit is, dus beëindigt het niets."));
+        return Err(trf(
+            "Nook weet niet zeker welk proces van {name} dit is, dus beëindigt het niets.",
+            "Nook is not sure which process of {name} this is, so it will not terminate anything.",
+            &[("name", &name)],
+        ));
     };
     if !scanner::terminate(pid) {
-        return Err(format!("{name} kon niet worden beëindigd."));
+        return Err(trf("{name} kon niet worden beëindigd.", "{name} could not be terminated.", &[("name", &name)]));
     }
     state.hub.forget(&session_id);
     Ok(())
@@ -218,7 +231,9 @@ pub fn agents_prepare_link(state: State<'_, AgentsState>, target: Target, instal
 /// OK: schrijft precies de getoonde wijziging, na een backup. Geeft het pad van de backup terug.
 #[tauri::command]
 pub fn agents_apply_link(app: AppHandle, state: State<'_, AgentsState>, id: String) -> Res<Option<String>> {
-    let change = lock(&state.changes).remove(&id).ok_or("Deze wijziging is verlopen; kies opnieuw Koppel.")?;
+    let change = lock(&state.changes)
+        .remove(&id)
+        .ok_or_else(|| tr("Deze wijziging is verlopen; kies opnieuw Koppel.", "This change has expired; please choose Link again."))?;
     let backup = installer::apply(&change).map_err(|e| e.0)?;
     app.state::<AppState>().store.audit(
         if change.install { "agents_link" } else { "agents_unlink" },
@@ -273,7 +288,7 @@ fn changed(app: &AppHandle) {
 #[tauri::command]
 pub fn agents_profile_add(app: AppHandle, state: State<'_, AgentsState>, kind: AgentKind, label: String) -> Res<AgentProfile> {
     if !kind.supports_profiles() {
-        return Err(format!("{} kent geen accounts per map.", kind.name()));
+        return Err(trf("{name} kent geen accounts per map.", "{name} does not support per-folder accounts.", &[("name", &kind.name())]));
     }
     let p = lock(&state.profiles).add(kind, &label, None);
     changed(&app);
@@ -289,7 +304,7 @@ pub fn agents_profile_rename(app: AppHandle, state: State<'_, AgentsState>, id: 
 /// Haalt een account uit Nook. De map en de inlog op schijf blijven staan; de sleutel in de kluis gaat weg.
 #[tauri::command]
 pub fn agents_profile_remove(app: AppHandle, state: State<'_, AgentsState>, id: String) -> Res<()> {
-    let secret = lock(&state.profiles).remove(&id).ok_or("Het hoofdaccount blijft altijd.")?;
+    let secret = lock(&state.profiles).remove(&id).ok_or_else(|| tr("Het hoofdaccount blijft altijd.", "The main account always stays."))?;
     let _ = app.state::<AppState>().secrets.remove(&secret);
     changed(&app);
     Ok(())
@@ -310,7 +325,7 @@ pub fn agents_profile_auth(app: AppHandle, state: State<'_, AgentsState>, id: St
 /// Bewaart de API-sleutel van een Claude-account in de kluis (leeg = weghalen). Gaat nooit naar een bestand.
 #[tauri::command]
 pub fn agents_profile_key(app: AppHandle, state: State<'_, AgentsState>, id: String, key: String) -> Res<bool> {
-    let profile = lock(&state.profiles).profile(&id).ok_or("Onbekend account")?;
+    let profile = lock(&state.profiles).profile(&id).ok_or_else(|| tr("Onbekend account", "Unknown account"))?;
     app.state::<AppState>().secrets.write(&profile.secret_account(), &key)?;
     changed(&app);
     Ok(app.state::<AppState>().secrets.read(&profile.secret_account()).is_some())

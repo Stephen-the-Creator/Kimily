@@ -1,6 +1,11 @@
 <script lang="ts" module>
+  import { emit } from "@tauri-apps/api/event";
   // Momenten die alle bollen delen (NookPresence op de Mac): een klik, iets verstuurd, iets klaar.
   export type Mood = "idle" | "working" | "waiting" | "done" | "error" | "listen" | "seen";
+  export type Accessory = "none" | "headphones" | "shades" | "crown" | "beanie" | "halo";
+  export const ACCESSORIES: Accessory[] = ["none", "headphones", "shades", "crown", "beanie", "halo"];
+  export const ACCESSORY_KEY = "nook.accessory";
+
   export interface RingPiece {
     id: string;
     label: string;
@@ -8,6 +13,25 @@
   }
 
   const listeners = new Set<(moment: "heard" | "nod") => void>();
+  const accessoryListeners = new Set<(next: Accessory) => void>();
+
+  export function readAccessory(): Accessory {
+    try {
+      const v = localStorage.getItem(ACCESSORY_KEY) as Accessory | null;
+      return v && ACCESSORIES.includes(v) ? v : "none";
+    } catch {
+      return "none";
+    }
+  }
+
+  export function setAccessory(next: Accessory) {
+    try {
+      localStorage.setItem(ACCESSORY_KEY, next);
+    } catch {}
+    accessoryListeners.forEach((l) => l(next));
+    void emit("island-prefs-changed").catch(() => {});
+  }
+
   /// Je stuurde Nook iets: een sprongetje met grote ogen.
   export function heard() {
     listeners.forEach((l) => l("heard"));
@@ -19,9 +43,12 @@
 </script>
 
 <script lang="ts">
+  import { listen } from "@tauri-apps/api/event";
+  import { play as playSound } from "../lib/sounds";
+  import { nook } from "../lib/state.svelte";
+
   // Nook zelf: een bol met licht en schaduw waarvan de ogen je muis volgen. Hij knippert, ademt, knikt als iets klaar
-  // is, springt op als je iets verstuurt, krijgt blosjes als je muis even op hem rust en giechelt na drie snelle klikken.
-  // In het open paneel draagt hij een ring met alles waar hij mee bezig is (NookOrb en NookTaskRing op de Mac).
+  // is, springt op als je iets verstuurt, krijgt blosjes en hartjes als je muis even op hem rust en wordt duizelig na drie snelle klikken.
   let {
     size = 22,
     mood = "idle",
@@ -29,14 +56,20 @@
     ring = [],
     onpiece,
     movable = false,
-  }: { size?: number; mood?: Mood; level?: number; ring?: RingPiece[]; onpiece?: (id: string) => void; movable?: boolean } = $props();
+    happy = false,
+    alive = false,
+  }: { size?: number; mood?: Mood; level?: number; ring?: RingPiece[]; onpiece?: (id: string) => void; movable?: boolean; happy?: boolean; alive?: boolean } = $props();
 
   let el: HTMLDivElement;
   let look = $state({ x: 0, y: 0 });
+  let tilt = $state(0);
+  let lastPointer = 0;
   let blinking = $state(false);
-  let moment = $state<"" | "poke" | "giggle" | "heard" | "nod" | "hello" | "wake">("");
+  let moment = $state<"" | "poke" | "dizzy" | "heard" | "nod" | "hello" | "wake">("");
   let blush = $state(false);
+  let hearts = $state(false);
   let drowsy = $state(false);
+  let accessory = $state<Accessory>(readAccessory());
   let hovered = $state<string | null>(null);
   // The hovered piece's name stays a moment after the pointer leaves the ring, so you can move onto it and click it.
   let unhoverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -72,6 +105,8 @@
 
   function follow(e: MouseEvent) {
     if (!el) return;
+    lastPointer = Date.now();
+    tilt = 0;
     const r = el.getBoundingClientRect();
     const dx = e.clientX - (r.left + r.width / 2);
     const dy = e.clientY - (r.top + r.height / 2);
@@ -89,13 +124,18 @@
     }
     activity();
     clearTimeout(restTimer);
-    // De muis rust op Nook: blosjes.
-    restTimer = setTimeout(() => (blush = true), 1200);
+    // De muis rust op Nook: blosjes en kleine hartjes.
+    restTimer = setTimeout(() => {
+      blush = true;
+      hearts = true;
+      void playSound("hearts", nook.settings?.sounds ?? true);
+    }, 1400);
   }
 
   function leave() {
     clearTimeout(restTimer);
     blush = false;
+    hearts = false;
   }
 
   function poke() {
@@ -104,14 +144,25 @@
       return;
     }
     const now = Date.now();
-    pokes = [...pokes.filter((t) => now - t < 1000), now];
+    pokes = [...pokes.filter((t) => now - t < 1100), now];
     activity();
     if (pokes.length >= 3) {
       pokes = [];
-      play("giggle", 1100);
+      play("dizzy", 1800);
+      void playSound("dizzy", nook.settings?.sounds ?? true);
     } else {
       play("poke", 350);
+      void playSound("poke", nook.settings?.sounds ?? true);
     }
+  }
+
+  function cycleAccessory(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = ACCESSORIES[(ACCESSORIES.indexOf(accessory) + 1) % ACCESSORIES.length];
+    setAccessory(next);
+    play("hello", 450);
+    void playSound("poke", nook.settings?.sounds ?? true);
   }
 
   // Knipperen op onregelmatige momenten, soms twee keer; niet als hij tevreden is of denkt.
@@ -132,15 +183,45 @@
     };
     next();
     const drowse = setInterval(() => (drowsy = Date.now() - lastActivity > DROWSY_AFTER), 30_000);
+    // Autonomous curious glances and gentle head tilts when alive (e.g. inside the Dynamic Island).
+    const poses = [
+      { x: 0.9, y: -0.2, tilt: 5 },
+      { x: -0.85, y: 0.1, tilt: -5 },
+      { x: 0.3, y: -0.7, tilt: 3 },
+      { x: 0, y: 0, tilt: 0 },
+      { x: -0.7, y: -0.3, tilt: -4 },
+      { x: 0.75, y: 0.2, tilt: 4 },
+    ];
+    let step = 0;
+    const glance = setInterval(() => {
+      if (!alive || drowsy || Date.now() - lastPointer < 3500 || document.body.classList.contains("easy")) return;
+      const p = poses[step % poses.length];
+      step++;
+      const reach = size * 0.09;
+      look = { x: p.x * reach, y: p.y * reach };
+      tilt = p.tilt;
+      if (step % 5 === 0) play("hello", 600);
+    }, 4200);
     const listener = (m: "heard" | "nod") => {
       activity();
       play(m, m === "heard" ? 600 : 700);
     };
     listeners.add(listener);
+    const accListener = (next: Accessory) => (accessory = next);
+    accessoryListeners.add(accListener);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACCESSORY_KEY) accessory = readAccessory();
+    };
+    window.addEventListener("storage", onStorage);
+    const unPrefs = listen("island-prefs-changed", () => (accessory = readAccessory()));
     return () => {
       clearTimeout(timer);
       clearInterval(drowse);
+      clearInterval(glance);
       listeners.delete(listener);
+      accessoryListeners.delete(accListener);
+      window.removeEventListener("storage", onStorage);
+      unPrefs.then((f) => f());
     };
   });
 
@@ -253,6 +334,20 @@
 
   $effect(() => () => cancelAnimationFrame(frame));
 
+  // A small mouth that only shows when there is something to say with it: a smile when he is pleased, an "o" when he
+  // is surprised or listening closely, a flat line when something failed. At rest he has none, as before.
+  const mouth = $derived(
+    moment === "dizzy"
+      ? "wavy"
+      : held || moment === "heard" || moment === "wake" || mood === "seen" || mood === "listen"
+        ? "oh"
+        : (happy && moment !== "poke") || blush || hearts || moment === "nod" || mood === "done"
+          ? "smile"
+          : mood === "error"
+            ? "flat"
+            : "",
+  );
+
   // Wijst de muis een stuk van de ring aan, dan kijkt Nook ernaar.
   const gaze = $derived.by(() => {
     if (pull.lx || pull.ly) return { x: pull.lx, y: pull.ly };
@@ -298,22 +393,67 @@
     onpointerup={release}
     onpointercancel={release}
     onmousedown={(e) => movable && e.button === 0 && e.stopPropagation()}
-    style="transform: translate({pull.x}px, {pull.y}px) rotate({pull.a}rad) scale({1 + pull.s}, {1 - pull.s * 0.55}) rotate({-pull.a}rad)"
+    style="transform: translate({pull.x}px, {pull.y}px) rotate({pull.a}rad) scale({1 + pull.s}, {1 - pull.s * 0.55}) rotate({-pull.a}rad) rotate({tilt}deg)"
   >
+    <span class="aura aura-{mood}" style="--level:{level}" aria-hidden="true"></span>
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div
       class="orb {mood} {moment}"
       class:drowsy
+      class:happy={happy && moment !== "dizzy"}
       bind:this={el}
       onmouseenter={enter}
       onmouseleave={leave}
       onclick={poke}
+      oncontextmenu={cycleAccessory}
       style="--lx:{-gaze.x * 1.6}px;--ly:{-gaze.y * 1.6}px;--level:{level}"
     >
-      <span class="eye" class:blink={blinking || moment === "poke" || moment === "giggle"} style="transform: translate({gaze.x}px, {gaze.y}px)"></span>
-      <span class="eye" class:blink={blinking || moment === "poke" || moment === "giggle"} style="transform: translate({gaze.x}px, {gaze.y}px)"></span>
-      {#if blush || held || moment === "giggle"}
+      {#if accessory !== "none"}
+        <svg class="acc acc-{accessory}" viewBox="0 0 32 32" aria-hidden="true">
+          {#if accessory === "headphones"}
+            <path d="M5 17 C5 8 27 8 27 17" fill="none" stroke="var(--acc-band)" stroke-width="2.6" stroke-linecap="round" />
+            <rect x="2.2" y="14.5" width="4.4" height="7.5" rx="2.2" fill="var(--acc-cup)" stroke="var(--orb-base)" stroke-width="0.9" />
+            <rect x="25.4" y="14.5" width="4.4" height="7.5" rx="2.2" fill="var(--acc-cup)" stroke="var(--orb-base)" stroke-width="0.9" />
+          {:else if accessory === "shades"}
+            <rect x="6.5" y="12" width="8.5" height="6" rx="2" fill="var(--acc-lens)" />
+            <rect x="17" y="12" width="8.5" height="6" rx="2" fill="var(--acc-lens)" />
+            <path d="M15 14.5 L17 14.5" stroke="var(--acc-lens)" stroke-width="1.6" />
+            <path d="M8.5 13.5 L11 16.5 M19 13.5 L21.5 16.5" stroke="var(--acc-glint)" stroke-width="1.1" stroke-linecap="round" />
+          {:else if accessory === "crown"}
+            <path d="M9 10 L11 4 L16 8 L21 4 L23 10 Z" fill="var(--acc-gold)" stroke="var(--acc-gold-edge)" stroke-width="1" stroke-linejoin="round" />
+          {:else if accessory === "beanie"}
+            <path d="M6 12 C7 4 25 4 26 12 Z" fill="var(--acc-beanie)" />
+            <rect x="5.5" y="10.5" width="21" height="3.2" rx="1.6" fill="var(--acc-beanie-band)" />
+            <circle cx="16" cy="4.2" r="2.2" fill="var(--acc-pom)" />
+          {:else if accessory === "halo"}
+            <ellipse cx="16" cy="4.5" rx="8.5" ry="2.4" fill="none" stroke="var(--acc-halo)" stroke-width="1.8" />
+          {/if}
+        </svg>
+      {/if}
+      {#if moment === "dizzy"}
+        <span class="eye dizzy-eye"></span>
+        <span class="eye dizzy-eye"></span>
+      {:else}
+        <span class="eye" class:blink={blinking || moment === "poke"} style="transform: translate({gaze.x}px, {gaze.y}px)"></span>
+        <span class="eye" class:blink={blinking || moment === "poke"} style="transform: translate({gaze.x}px, {gaze.y}px)"></span>
+      {/if}
+      {#if mouth}
+        {#key mouth}
+          <span class="mouth {mouth}" style="translate: calc(-50% + {gaze.x * 0.55}px) {gaze.y * 0.4}px" aria-hidden="true"></span>
+        {/key}
+      {/if}
+      {#if blush || held}
         <span class="cheek left"></span><span class="cheek right"></span>
+      {/if}
+      {#if hearts}
+        {#each ["h1", "h2"] as h (h)}
+          <svg class="heart {h}" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 21s-7.5-4.6-9.5-9.3C1.2 8.4 3.4 5 6.8 5c2 0 3.6 1.1 5.2 3 1.6-1.9 3.2-3 5.2-3 3.4 0 5.6 3.4 4.3 6.7C19.5 16.4 12 21 12 21Z" fill="currentColor" />
+          </svg>
+        {/each}
+      {/if}
+      {#if drowsy && !held}
+        <span class="zz" aria-hidden="true">z</span>
       {/if}
     </div>
   </div>
@@ -326,56 +466,262 @@
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    /* Belicht als een bal: hoogtepunt linksboven dat tegen de blik in schuift, schaduw naar de rand, wat teruggekaatst licht onderin. */
+    /* Lit like a glossy ball: a highlight top left that slides against his gaze, shade toward the rim, and a little
+       light bounced back from below. The glow around him lives on `.aura`, so moods never flatten this shading. */
     background:
-      radial-gradient(circle at calc(34% + var(--lx)) calc(30% + var(--ly)), #fff 0%, #f6f6f8 45%, #d9d9df 100%),
-      #f6f6f8;
+      radial-gradient(circle at 50% 112%, color-mix(in srgb, var(--orb-light) 30%, transparent) 0%, transparent 46%),
+      radial-gradient(
+        circle at calc(34% + var(--lx)) calc(30% + var(--ly)),
+        color-mix(in srgb, var(--orb-light) 88%, var(--orb-base)) 0%,
+        var(--orb-base) 50%,
+        color-mix(in srgb, var(--orb-base) 68%, var(--orb-ink)) 100%
+      ),
+      var(--orb-base);
     box-shadow:
-      inset 0 calc(var(--s) * -0.08) calc(var(--s) * 0.18) rgba(0, 0, 0, 0.12),
-      0 0 calc(var(--s) * (0.5 + var(--level) * 0.6)) rgba(255, 255, 255, 0.12);
+      inset 0 calc(var(--s) * -0.1) calc(var(--s) * 0.2) var(--orb-shade),
+      inset 0 calc(var(--s) * 0.035) calc(var(--s) * 0.05) color-mix(in srgb, var(--orb-light) 60%, transparent),
+      0 calc(var(--s) * 0.06) calc(var(--s) * 0.14) var(--orb-shade),
+      0 0 calc(var(--s) * (0.55 + var(--level) * 0.6)) color-mix(in srgb, var(--orb-base) 30%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: calc(var(--s) * 0.16);
     position: relative;
-    transition: box-shadow 0.3s;
+    z-index: 1;
+    transition: box-shadow 0.3s, background 0.3s;
     cursor: default;
   }
+  /* The shine: a soft oval that follows the light. */
+  .orb::before {
+    content: "";
+    position: absolute;
+    left: 17%;
+    top: 10%;
+    width: 36%;
+    height: 22%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--orb-light) 90%, transparent), transparent);
+    transform: translate(var(--lx), var(--ly)) rotate(-28deg);
+    transition: transform 0.08s linear;
+    pointer-events: none;
+  }
+  /* A hairline rim, so he keeps his edge on a light island too. */
+  .orb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 max(0.5px, calc(var(--s) * 0.02)) color-mix(in srgb, var(--orb-ink) 12%, transparent);
+    pointer-events: none;
+  }
   .eye {
+    position: relative;
     width: calc(var(--s) * 0.13);
     height: calc(var(--s) * 0.22);
     border-radius: 999px;
-    background: #050507;
+    background: var(--orb-ink);
     transition: transform 0.08s linear, height 0.08s;
   }
-  .hold { display: flex; position: relative; z-index: 1; will-change: transform; }
+  /* A catchlight in each eye: the small dot that makes him look alive. */
+  .eye::after {
+    content: "";
+    position: absolute;
+    top: 14%;
+    left: 18%;
+    width: 42%;
+    height: 26%;
+    border-radius: 50%;
+    background: var(--orb-light);
+    opacity: 0.9;
+    transition: opacity 0.08s;
+  }
+  .eye.blink::after,
+  .drowsy .eye::after,
+  .happy .eye::after,
+  .dizzy-eye::after { opacity: 0; }
+  .hold { display: flex; position: relative; z-index: 1; will-change: transform; transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1); }
   .hold.movable { cursor: grab; user-select: none; touch-action: none; }
   .hold.movable .orb { cursor: inherit; }
-  .hold.held { cursor: grabbing; z-index: 10; }
+  .hold.held { cursor: grabbing; z-index: 10; transition: none; }
   /* Held: wide awake, and a soft lift that the glow follows. */
-  .held .orb { box-shadow: 0 calc(var(--s) * 0.18) calc(var(--s) * 0.6) rgba(255, 255, 255, 0.25); }
+  .held .orb { box-shadow: 0 calc(var(--s) * 0.18) calc(var(--s) * 0.6) var(--orb-held-glow); }
   .held .eye { height: calc(var(--s) * 0.26); }
   .eye.blink { height: calc(var(--s) * 0.03); }
   .drowsy .eye { height: calc(var(--s) * 0.08); }
-  .cheek { position: absolute; top: 58%; width: calc(var(--s) * 0.16); height: calc(var(--s) * 0.08); border-radius: 50%; background: rgba(255, 120, 150, 0.55); filter: blur(1px); }
+  .happy .eye {
+    height: calc(var(--s) * 0.12);
+    width: calc(var(--s) * 0.16);
+    background: transparent;
+    border-top: max(1.5px, calc(var(--s) * 0.065)) solid var(--orb-ink);
+    border-radius: 50% 50% 0 0;
+  }
+  .dizzy-eye {
+    width: calc(var(--s) * 0.18);
+    height: calc(var(--s) * 0.18);
+    background: transparent;
+    border: max(1.5px, calc(var(--s) * 0.05)) dashed var(--orb-ink);
+    border-radius: 50%;
+    animation: spin-eye 0.55s linear infinite;
+  }
+  @keyframes spin-eye { to { transform: rotate(360deg); } }
+  .acc {
+    position: absolute;
+    inset: calc(var(--s) * -0.18);
+    width: calc(var(--s) * 1.36);
+    height: calc(var(--s) * 1.36);
+    pointer-events: none;
+    overflow: visible;
+    z-index: 2;
+  }
+  .acc-halo { filter: drop-shadow(0 0 3px var(--acc-halo-glow)); }
+  .heart {
+    position: absolute;
+    width: max(var(--space-8), calc(var(--s) * 0.34));
+    height: max(var(--space-8), calc(var(--s) * 0.34));
+    color: var(--orb-heart);
+    filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--orb-heart) 50%, transparent));
+    pointer-events: none;
+    overflow: visible;
+    z-index: 3;
+    animation: float-heart 1.4s ease-out infinite;
+  }
+  .heart.h1 { top: -25%; left: 6%; }
+  .heart.h2 {
+    top: -34%;
+    right: 2%;
+    width: max(var(--space-6), calc(var(--s) * 0.26));
+    height: max(var(--space-6), calc(var(--s) * 0.26));
+    animation-delay: 0.55s;
+  }
+  @keyframes float-heart {
+    0% { transform: translateY(4px) scale(0.6); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translateY(-10px) scale(1.05); opacity: 0; }
+  }
+  .mouth {
+    position: absolute;
+    left: 50%;
+    top: 64%;
+    pointer-events: none;
+    transition: translate 0.08s linear;
+    animation: mouth-in 0.2s cubic-bezier(0.3, 1.5, 0.5, 1);
+  }
+  .mouth.smile {
+    width: calc(var(--s) * 0.2);
+    height: calc(var(--s) * 0.09);
+    border-bottom: max(1px, calc(var(--s) * 0.05)) solid var(--orb-ink);
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  }
+  .mouth.oh {
+    top: 62%;
+    width: calc(var(--s) * 0.1);
+    height: calc(var(--s) * 0.12);
+    border-radius: 50%;
+    background: var(--orb-ink);
+  }
+  .mouth.flat,
+  .mouth.wavy {
+    top: 67%;
+    width: calc(var(--s) * 0.14);
+    height: max(1px, calc(var(--s) * 0.045));
+    border-radius: 999px;
+    background: var(--orb-ink);
+  }
+  .mouth.wavy { animation: mouth-in 0.2s ease-out, wavy 0.3s ease-in-out infinite alternate; }
+  @keyframes mouth-in { from { scale: 0.2; opacity: 0; } }
+  @keyframes wavy { to { rotate: 12deg; } }
+  .zz {
+    position: absolute;
+    top: -10%;
+    right: -6%;
+    font: 700 calc(var(--s) * 0.32) / 1 var(--font);
+    color: var(--text3);
+    pointer-events: none;
+    animation: zz 2.4s ease-in-out infinite;
+  }
+  @keyframes zz {
+    0% { transform: translate(0, 4px) scale(0.6); opacity: 0; }
+    40% { opacity: 1; }
+    100% { transform: translate(4px, -6px) scale(1); opacity: 0; }
+  }
+  /* The light around him that says what he is doing: a comet circling while he works, a warm pulse while he waits
+     for you, a mint glow that swells with your voice, a coral flash on an error and a ring of mint when he is done. */
+  .aura {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--s) * 1.56);
+    height: calc(var(--s) * 1.56);
+    margin: calc(var(--s) * -0.78) 0 0 calc(var(--s) * -0.78);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 0;
+    transition: opacity 0.4s ease;
+  }
+  .aura-working {
+    opacity: 1;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 45%,
+      color-mix(in srgb, var(--mint) 35%, transparent) 70%,
+      color-mix(in srgb, var(--mint) 55%, var(--orb-base)) 92%,
+      var(--orb-light) 97%,
+      transparent 100%
+    );
+    mask: radial-gradient(farthest-side, transparent 65%, black 68%, black 77%, transparent 80%);
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--mint) 60%, transparent));
+    animation: aura-spin 1.4s linear infinite;
+  }
+  .aura-waiting {
+    opacity: 1;
+    background:
+      radial-gradient(closest-side, transparent 80%, color-mix(in srgb, var(--amber) 85%, transparent) 84%, transparent 90%),
+      radial-gradient(closest-side, color-mix(in srgb, var(--amber) 55%, transparent), transparent);
+    animation: aura-pulse 1.4s ease-in-out infinite;
+  }
+  .aura-listen {
+    opacity: 1;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--mint) 55%, transparent), transparent);
+    transform: scale(calc(0.85 + var(--level) * 0.45));
+    transition: opacity 0.4s ease, transform 0.08s linear;
+  }
+  .aura-error {
+    opacity: 1;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--coral) 60%, transparent), transparent);
+  }
+  .aura-done {
+    opacity: 1;
+    background: radial-gradient(closest-side, transparent 70%, color-mix(in srgb, var(--mint) 70%, transparent) 78%, transparent);
+    animation: aura-burst 0.8s ease-out 1 both;
+  }
+  @keyframes aura-spin { to { transform: rotate(360deg); } }
+  @keyframes aura-pulse {
+    0%, 100% { transform: scale(0.85); opacity: 0.55; }
+    50% { transform: scale(1.08); opacity: 1; }
+  }
+  @keyframes aura-burst {
+    from { transform: scale(0.7); opacity: 1; }
+    to { transform: scale(1.35); opacity: 0; }
+  }
+  :global(body.easy) .aura { animation: none; }
+  .cheek { position: absolute; top: 58%; width: calc(var(--s) * 0.16); height: calc(var(--s) * 0.08); border-radius: 50%; background: var(--orb-cheek); filter: blur(1px); }
   .cheek.left { left: 16%; }
   .cheek.right { right: 16%; }
   .working { animation: breathe 1.6s ease-in-out infinite; }
   .idle:not(.drowsy) { animation: rest 4.5s ease-in-out infinite; }
   /* Taking it easy (battery, saver, paused): the idle float rests, so the webview stops drawing frames for it. */
   :global(body.easy) .idle { animation: none; }
-  .waiting { box-shadow: 0 0 calc(var(--s) * 0.6) color-mix(in srgb, var(--amber) 55%, transparent); }
-  .listen { box-shadow: 0 0 calc(var(--s) * (0.5 + var(--level) * 1.2)) color-mix(in srgb, var(--mint) 60%, transparent); }
   .listen .eye { height: calc(var(--s) * (0.22 + var(--level) * 0.06)); }
   .seen .eye:last-child { transform: translateY(-2px) !important; }
-  .error { box-shadow: 0 0 calc(var(--s) * 0.6) color-mix(in srgb, var(--coral) 55%, transparent); animation: shake 0.4s ease-in-out 1; }
+  .orb.error { animation: shake 0.4s ease-in-out 1; }
   .nod { animation: nod 0.7s ease-out 1; }
   .poke { animation: squash 0.35s ease-out 1; }
   .heard { animation: hop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) 1; }
   .heard .eye { height: calc(var(--s) * 0.26); }
   .hello { animation: hop 0.6s ease-out 1; }
   .wake { animation: hop 0.7s cubic-bezier(0.3, 1.8, 0.5, 1) 1; }
-  .giggle { animation: wobble 1.1s ease-in-out 1; }
+  .dizzy { animation: wobble 1.8s ease-in-out 1; }
   @keyframes rest { 50% { transform: translateY(-1px) scale(1.01); } }
   @keyframes breathe { 50% { transform: scale(1.08); } }
   @keyframes nod { 30% { transform: translateY(3px) rotate(2deg); } 60% { transform: translateY(-1px); } }
