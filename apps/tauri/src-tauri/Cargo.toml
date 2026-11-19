@@ -119,7 +119,7 @@ zbus = "6"
 x11rb = { version = "0.14", features = ["screensaver", "xtest"] }
 # The browser's screenshot (webkit_web_view_get_snapshot); same versions as wry's.
 webkit2gtk = "=2.0.2"
-cairo-rs = "0.18"
+cairo-rs = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3", features = ["apple-native"] }
