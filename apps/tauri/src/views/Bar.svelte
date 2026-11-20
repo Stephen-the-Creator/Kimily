@@ -522,11 +522,30 @@
     handle.addEventListener("pointercancel", end);
   }
 
+  // Floating: the user drags the bar anywhere. On macOS `startDragging` returns when the mouse is let go, but on Windows
+  // it returns at once and the move happens afterwards, so saving right after it stored the old spot and the bar jumped
+  // back on the next hover. The spot is saved once the window has stopped moving after a drag instead.
+  let dragUntil = 0;
+  let saveMove: ReturnType<typeof setTimeout> | undefined;
   async function drag(e: MouseEvent) {
     if (!floating || e.button !== 0) return;
+    dragUntil = Date.now() + 1500;
     await getCurrentWindow().startDragging();
-    await api.barMoved();
   }
+  $effect(() => {
+    if (!floating) return;
+    const off = getCurrentWindow().onMoved(() => {
+      // Only moves that follow a drag count; moves Kimily makes itself (opening, closing) don't.
+      if (Date.now() > dragUntil) return;
+      dragUntil = Date.now() + 1500;
+      clearTimeout(saveMove);
+      saveMove = setTimeout(() => void api.barMoved(), 250);
+    });
+    return () => {
+      clearTimeout(saveMove);
+      off.then((f) => f());
+    };
+  });
 
   // Agents: geluiden in de balk, en het kaartje "klaar" klapt hem even open (tot je ernaar wijst).
   $effect(() => {
