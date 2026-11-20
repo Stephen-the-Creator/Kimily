@@ -4,6 +4,12 @@
 
 It gathers everything that asks for your attention into one quiet place at the top of your screen — AI chat, focus timer, tasks, quick notes, clipboard history with secret protection, file shelf, live weather, music controls, calendar countdowns, and coding agents.
 
+## Download (Windows)
+
+Download the latest standalone executable (`Kimily.exe`) from [**Releases**](https://github.com/Stephen-the-Creator/Kimily/releases/latest).
+
+> **Note:** Since `Kimily.exe` is an unsigned open-source build, Windows SmartScreen may show a warning on first launch — click **More info → Run anyway** to start.
+
 ## Highlights
 
 - **Dynamic Island for Windows** — sleek collapsible pill with live clock/date, weather, media controls & progress bar, active agent status, and upcoming calendar event countdowns.
