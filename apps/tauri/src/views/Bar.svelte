@@ -543,10 +543,30 @@
   // back on the next hover. The spot is saved once the window has stopped moving after a drag instead.
   let dragUntil = 0;
   let saveMove: ReturnType<typeof setTimeout> | undefined;
-  async function drag(e: MouseEvent) {
+  // A drag only starts once the pointer has moved a few pixels with the button held: on Windows `startDragging` takes the
+  // mouse at once and swallows the click, so starting it on every press made the tabs, the header buttons and a click
+  // on the pill itself do nothing. Buttons and fields never start a drag.
+  const DRAG_THRESHOLD = 4;
+  let pressAt: { x: number; y: number } | null = null;
+  function drag(e: MouseEvent) {
     if (!floating || e.button !== 0) return;
+    if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [contenteditable]")) return;
+    pressAt = { x: e.screenX, y: e.screenY };
+    window.addEventListener("mousemove", dragMove);
+    window.addEventListener("mouseup", dragEnd);
+  }
+  function dragMove(e: MouseEvent) {
+    if (!pressAt) return;
+    if ((e.buttons & 1) === 0) return dragEnd();
+    if (Math.hypot(e.screenX - pressAt.x, e.screenY - pressAt.y) < DRAG_THRESHOLD) return;
+    dragEnd();
     dragUntil = Date.now() + 1500;
-    await getCurrentWindow().startDragging();
+    void getCurrentWindow().startDragging();
+  }
+  function dragEnd() {
+    pressAt = null;
+    window.removeEventListener("mousemove", dragMove);
+    window.removeEventListener("mouseup", dragEnd);
   }
   $effect(() => {
     if (!floating) return;
