@@ -20,9 +20,7 @@ It gathers everything that asks for your attention into one quiet place at the t
 ```powershell
 cd apps/tauri
 npm install
-npm run build
-cd src-tauri
-cargo build --release --jobs 1
+npm run tauri build -- --no-bundle -- --jobs 1
 ```
 
 ## License & Attribution
