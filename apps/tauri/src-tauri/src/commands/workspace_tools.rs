@@ -174,8 +174,10 @@ pub fn browser_state(state: State<'_, WorkspaceState>) -> serde_json::Value {
 }
 
 /// Wat je in de adresbalk typt: een adres of een zoekopdracht. Jij klikte, dus het gaat meteen.
+/// Must be `async` so Tauri runs it off the main UI thread (calling `WebviewWindowBuilder::build()`
+/// from a synchronous command deadlocks WebView2 on Windows).
 #[tauri::command]
-pub fn browser_go(app: AppHandle, input: String) -> Res<()> {
+pub async fn browser_go(app: AppHandle, input: String) -> Res<()> {
     #[cfg(desktop)]
     {
         let url = crate::workspace::browser::address(&input).ok_or("Typ een adres of zoekterm.")?;

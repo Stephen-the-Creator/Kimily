@@ -137,7 +137,7 @@ impl Browser {
             let loads = self.state.clone();
             let load_handle = app.clone();
             WebviewWindowBuilder::new(app, LABEL, WebviewUrl::External(parsed))
-                .title("Nook — Browser")
+                .title("Kimily — Browser")
                 .inner_size(1280.0, 800.0)
                 .incognito(true)
                 .initialization_script(CONSOLE_CAPTURE)
