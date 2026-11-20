@@ -388,3 +388,227 @@ kbd { font-family: var(--font); }
   --on-iris: #fafafa;
   color: #16161a;
 }
+
+/* ───────────────────────────── Neon ─────────────────────────────
+   Settings › Appearance › Neon: a deep, slightly violet black with glowing cyan, violet and pink. The accent you pick
+   (`--iris`) leads; the soft white default becomes Neon's cyan (`NEON_ACCENT` in lib/theme.ts). Motion here is light
+   and slow (a rim of light that runs around, a soft glow on hover) and stops under "reduce motion". */
+@property --neon-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes neon-spin { to { --neon-angle: 360deg; } }
+@keyframes neon-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-120px, -240px, 0); }
+}
+@keyframes neon-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+:root[data-theme="neon"] {
+  --neon-cyan: #22e4ff;
+  --neon-violet: #a855f7;
+  --neon-pink: #ff3ea5;
+  --neon-a: var(--iris);
+  --neon-b: var(--neon-violet);
+  --neon-gradient: linear-gradient(120deg, var(--neon-a), var(--neon-b) 55%, var(--neon-pink));
+  --neon-glow: 0 0 0 1px color-mix(in srgb, var(--neon-a) 55%, transparent), 0 0 18px color-mix(in srgb, var(--neon-a) 35%, transparent);
+  --neon-glow-soft: 0 0 14px color-mix(in srgb, var(--neon-a) 22%, transparent);
+
+  --notch: #05050b;
+  --canvas: #05050b;
+  --well: #0a0a14;
+  --surface: #0e0d1a;
+  --sidebar: #07070f;
+  --row-hover: #15132a;
+  --row-selected: #1d1a3a;
+  --graphite: #141228;
+  --smoke: #1b1834;
+  --field: #0b0a16;
+  --line: #1d1a34;
+  --line2: #2c2850;
+  --border: #1d1a34;
+  --separator: #1f1c38;
+  --hairline: #17152c;
+  --field-stroke: #2c2850;
+  --row-rest: #0a0914;
+  --paper: #f3f1ff;
+  --text-strong: #e8e5ff;
+  --text2: #b3add6;
+  --text3: #8c86b4;
+  --text-muted: #8c86b4;
+  --blue: #4cc9ff;
+  --mint: #2ef2b4;
+  --mint-soft: #5cffc9;
+  --amber: #ffc24d;
+  --coral: #ff4d7d;
+  --coral-soft: #ff8fb0;
+  --violet: #b98cff;
+  --bubble: #1a1733;
+  --chat-mine: #0f3a45;
+  --chat-theirs: #1a1733;
+  --composer: #0e0d1a;
+  --composer-tray: #0b0a16;
+  --menu: #121027;
+  --shadow-popover: 0 16px 48px #000000b3, 0 0 0 1px #a855f733, 0 0 32px #a855f726;
+  color-scheme: dark;
+}
+
+/* The main window: two soft lights in the corners and a few slow specks of light drifting up. They lie over the
+   window as light (screen blend, never catching the pointer), because every view paints its own canvas below them. */
+:root[data-theme="neon"] body:not(.bar)::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483000;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(900px 520px at 0% 0%, color-mix(in srgb, var(--neon-b) 13%, transparent), transparent 65%),
+    radial-gradient(800px 520px at 100% 100%, color-mix(in srgb, var(--neon-a) 10%, transparent), transparent 65%);
+}
+:root[data-theme="neon"] body:not(.bar)::before {
+  content: "";
+  position: fixed;
+  inset: -240px -120px 0 0;
+  pointer-events: none;
+  z-index: 2147483000;
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 82%, var(--neon-a), transparent),
+    radial-gradient(1px 1px at 28% 64%, var(--paper), transparent),
+    radial-gradient(1.5px 1.5px at 46% 92%, var(--neon-b), transparent),
+    radial-gradient(1px 1px at 63% 74%, var(--neon-a), transparent),
+    radial-gradient(2px 2px at 78% 88%, var(--neon-pink), transparent),
+    radial-gradient(1px 1px at 91% 58%, var(--paper), transparent);
+  background-size: 360px 360px;
+  animation: neon-drift 60s linear infinite;
+}
+
+/* Controls: a primary button is the gradient itself; any button and field lights up when you point at it. */
+:root[data-theme="neon"] button {
+  transition: background var(--motion-hover), border-color var(--motion-hover), box-shadow var(--motion-hover), transform var(--motion-quick), color var(--motion-hover);
+}
+:root[data-theme="neon"] button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--neon-a) 45%, var(--line2));
+  box-shadow: var(--neon-glow-soft);
+}
+:root[data-theme="neon"] button:active:not(:disabled) { transform: scale(0.97); }
+:root[data-theme="neon"] button.primary {
+  background: var(--neon-gradient);
+  background-size: 160% 100%;
+  color: #ffffff;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--neon-b) 40%, transparent);
+  transition: background-position 0.5s ease, box-shadow var(--motion-hover), transform var(--motion-quick);
+}
+:root[data-theme="neon"] button.primary:hover:not(:disabled) {
+  background: var(--neon-gradient);
+  background-size: 160% 100%;
+  background-position: 100% 0;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--neon-b) 55%, transparent), 0 0 8px color-mix(in srgb, var(--neon-a) 50%, transparent);
+}
+:root[data-theme="neon"] button.ghost:hover:not(:disabled) { box-shadow: none; color: var(--neon-a); }
+:root[data-theme="neon"] input:focus,
+:root[data-theme="neon"] textarea:focus,
+:root[data-theme="neon"] select:focus {
+  border-color: color-mix(in srgb, var(--neon-a) 70%, transparent);
+  box-shadow: var(--neon-glow);
+}
+:root[data-theme="neon"] button:focus-visible,
+:root[data-theme="neon"] [role="button"]:focus-visible,
+:root[data-theme="neon"] a:focus-visible {
+  outline-color: var(--neon-a);
+  box-shadow: var(--neon-glow);
+}
+:root[data-theme="neon"] h1,
+:root[data-theme="neon"] h2 {
+  background: var(--neon-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:root[data-theme="neon"] ::selection { background: color-mix(in srgb, var(--neon-b) 45%, transparent); color: #ffffff; }
+:root[data-theme="neon"] ::-webkit-scrollbar-thumb { background: linear-gradient(var(--neon-a), var(--neon-b)); }
+:root[data-theme="neon"] input[type="checkbox"],
+:root[data-theme="neon"] input[type="range"] { accent-color: var(--neon-a); }
+
+/* The island in Neon: deep glass, a rim of light that runs around it, and a glow that breathes. */
+.island-theme-neon {
+  --notch: #06060ef0;
+  --island-edge: color-mix(in srgb, var(--orb-base) 30%, transparent);
+  --island-edge-hover: color-mix(in srgb, var(--orb-base) 70%, transparent);
+  --island-glow: color-mix(in srgb, var(--orb-base) 40%, transparent);
+  --island-shadow: 0 8px 28px #000000a6, 0 0 22px color-mix(in srgb, #a855f7 30%, transparent);
+  --island-blur: blur(18px) saturate(1.6);
+  --neon-a: var(--orb-base);
+  --neon-b: #a855f7;
+  --neon-c: #ff3ea5;
+}
+.island-theme-neon .pill.island::after,
+.island-theme-neon .panel::after,
+.island-theme-neon.preview-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--neon-angle), var(--neon-a), var(--neon-b), var(--neon-c), var(--neon-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: neon-spin 6s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+.island-theme-neon .panel::after { animation-duration: 10s; opacity: 0.75; }
+.island-theme-neon .pill.island,
+.island-theme-neon .panel,
+.island-theme-neon.preview-pill {
+  position: relative;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--neon-a) 30%, transparent),
+    inset 0 -12px 24px -12px color-mix(in srgb, var(--neon-b) 35%, transparent),
+    var(--island-shadow);
+}
+.island-theme-neon .pill.island:hover {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--neon-a) 50%, transparent),
+    inset 0 -12px 24px -10px color-mix(in srgb, var(--neon-b) 55%, transparent),
+    0 0 26px color-mix(in srgb, var(--neon-a) 45%, transparent);
+}
+/* Busy (an agent or timer running): the rim spins faster and the glow breathes. */
+.island-theme-neon .pill.island.busy::after { animation-duration: 2.2s; }
+.island-theme-neon .pill.island.busy { animation: neon-breathe 2.4s ease-in-out infinite; }
+/* Inside the panel: the open tab and primary buttons glow in the gradient. */
+.island-theme-neon .tab-glider {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--neon-a) 28%, transparent), color-mix(in srgb, var(--neon-b) 28%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--neon-a) 45%, transparent), 0 0 12px color-mix(in srgb, var(--neon-b) 35%, transparent);
+}
+.island-theme-neon button.primary {
+  background: linear-gradient(120deg, var(--neon-a), var(--neon-b) 55%, var(--neon-c));
+  color: #ffffff;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--neon-b) 45%, transparent);
+}
+.island-theme-neon .island-progress { background: linear-gradient(90deg, var(--neon-a), var(--neon-b), var(--neon-c)); box-shadow: 0 0 10px var(--neon-a); }
+/* The pill leans toward the pointer (`tilt` in Bar.svelte) and a sheen follows it across the glass. */
+.island-theme-neon .pill.island:not(.tucked) {
+  transform: perspective(420px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out, box-shadow var(--motion-hover), opacity 0.24s ease;
+}
+.island-theme-neon .pill.island::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120px 60px at var(--shine-x, 50%) 0%, color-mix(in srgb, var(--neon-a) 22%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--motion-hover);
+  pointer-events: none;
+}
+.island-theme-neon .pill.island:hover::before { opacity: 1; }

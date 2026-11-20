@@ -81,7 +81,7 @@
   const islandDisplay = $derived(nook.settings?.islandDisplay ?? "pill");
   const hoverOpen = $derived(nook.settings?.islandHoverOpen ?? false);
   const hideWhenIdle = $derived(nook.settings?.hideWhenIdle ?? false);
-  type IslandTheme = "obsidian" | "glass" | "tinted" | "light";
+  type IslandTheme = "obsidian" | "glass" | "tinted" | "light" | "neon";
   let islandTheme = $state<IslandTheme>((localStorage.getItem("island.theme") as IslandTheme) || "obsidian");
   let hiddenTabs = $state<HideableTab[]>(readHiddenTabs());
   const tabVisible = (t: HideableTab) => !hiddenTabs.includes(t);
@@ -522,6 +522,22 @@
     handle.addEventListener("pointercancel", end);
   }
 
+  // The closed pill leans a little toward the pointer, like a card under your finger (drawn in 3D by the Neon island).
+  function tilt(e: PointerEvent) {
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.setProperty("--tilt-x", `${(-y * 14).toFixed(2)}deg`);
+    el.style.setProperty("--tilt-y", `${(x * 10).toFixed(2)}deg`);
+    el.style.setProperty("--shine-x", `${((x + 0.5) * 100).toFixed(1)}%`);
+  }
+  function untilt(e: PointerEvent) {
+    const el = e.currentTarget as HTMLElement;
+    el.style.setProperty("--tilt-x", "0deg");
+    el.style.setProperty("--tilt-y", "0deg");
+  }
+
   // Floating: the user drags the bar anywhere. On macOS `startDragging` returns when the mouse is let go, but on Windows
   // it returns at once and the move happens afterwards, so saving right after it stored the old spot and the bar jumped
   // back on the next hover. The spot is saved once the window has stopped moving after a drag instead.
@@ -694,6 +710,8 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="pill island"
+      onpointermove={tilt}
+      onpointerleave={untilt}
       class:wide={wantWide}
       class:tucked
       class:grooving={showMediaInPill && !!playing?.playing}

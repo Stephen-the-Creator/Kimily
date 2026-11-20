@@ -49,9 +49,9 @@ pub const ENTRIES: &[Entry] = &[
     Entry { id: "hide_when_idle", kind: Kind::Toggle, section: "notch", about: "Hide Nook's bar when there is nothing to show." },
     Entry {
         id: "theme",
-        kind: Kind::Choice(&["system", "light", "dark"]),
+        kind: Kind::Choice(&["system", "light", "dark", "neon"]),
         section: "appearance",
-        about: "The windows' look: follow the system, light or dark.",
+        about: "The windows' look: follow the system, light, dark, or neon (dark with glowing cyan and violet accents).",
     },
     Entry {
         id: "energy_mode",
@@ -334,6 +334,7 @@ mod tests {
         assert_eq!(value("auto", entry("energy_mode").unwrap()).as_deref(), Some("automatic"));
         assert_eq!(value("zwevend", entry("bar_placement").unwrap()).as_deref(), Some("floating"));
         assert_eq!(value("donker", entry("theme").unwrap()).as_deref(), Some("dark"));
+        assert_eq!(value("Neon", entry("theme").unwrap()).as_deref(), Some("neon"));
         assert_eq!(value("klingon", entry("app_language").unwrap()), None);
         assert!(entry("provider").is_none(), "the brain is never changed from the chat");
     }

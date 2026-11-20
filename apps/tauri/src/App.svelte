@@ -9,7 +9,7 @@
   import { nook, accentCss, onAccent } from "./lib/state.svelte";
   import { quiet } from "./lib/quiet.svelte";
   import { tr } from "./lib/i18n.svelte";
-  import { isDensity, resolveTheme, themeAccent } from "./lib/theme";
+  import { isDensity, resolveTheme, themeAccent, type Look } from "./lib/theme";
 
   // De balk bovenaan laadt index.html#bar; het hoofdvenster (en Android) de rest.
   const isBar = location.hash === "#bar";
@@ -28,8 +28,8 @@
     quiet.start();
   });
 
-  // Settings › Appearance: the main window follows System, Light or Dark; the bar and the other overlays stay dark, as
-  // the notch on the Mac does in every theme.
+  // Settings › Appearance: the main window follows System, Light, Dark or Neon; the bar and the other overlays stay dark,
+  // as the notch on the Mac does in every theme, except in Neon, which is dark too and lights up the bar as well.
   const followsTheme = location.hash === "" || location.hash === "#main";
   let systemDark = $state(typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)").matches : true);
   $effect(() => {
@@ -39,12 +39,12 @@
     query.addEventListener("change", changed);
     return () => query.removeEventListener("change", changed);
   });
-  const look = $derived(followsTheme ? resolveTheme(nook.settings?.theme, systemDark) : "dark");
+  const look = $derived<Look>(followsTheme ? resolveTheme(nook.settings?.theme, systemDark) : nook.settings?.theme === "neon" ? "neon" : "dark");
 
   $effect(() => {
     const root = document.documentElement;
     root.dataset.theme = look;
-    root.style.colorScheme = look;
+    root.style.colorScheme = look === "light" ? "light" : "dark";
     const density = nook.settings?.density;
     if (followsTheme && isDensity(density) && density !== "comfortable") root.dataset.density = density;
     else delete root.dataset.density;
@@ -56,7 +56,8 @@
     const hex = themeAccent(chosen, look);
     document.documentElement.style.setProperty("--iris", accentCss(hex));
     document.documentElement.style.setProperty("--on-iris", onAccent(hex));
-    document.documentElement.style.setProperty("--orb-base", accentCss(chosen));
+    // Nook keeps the color you picked, except Neon's default, where the soft white becomes the glowing accent too.
+    document.documentElement.style.setProperty("--orb-base", accentCss(look === "neon" ? hex : chosen));
   });
 </script>
 

@@ -89,7 +89,7 @@ export interface Settings {
   trayHintShown: boolean;
   mainWindow: { x: number; y: number; width: number; height: number; maximized: boolean } | null;
   /** The windows' look (Settings › Appearance); old files stay dark. */
-  theme: "system" | "light" | "dark";
+  theme: "system" | "light" | "dark" | "neon";
   /** How much room text and rows get. */
   density: "compact" | "comfortable" | "spacious";
   /** The default answer style (Settings › Instructions). */

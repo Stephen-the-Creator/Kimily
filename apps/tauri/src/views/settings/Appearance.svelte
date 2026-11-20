@@ -8,18 +8,19 @@
   import { ACCENTS, DENSITIES, THEMES, themeAccent, resolveTheme, type Density, type ThemeSetting } from "../../lib/theme";
   import { notifyIslandPrefs } from "../../lib/island-tabs";
 
-  type IslandTheme = "obsidian" | "glass" | "tinted" | "light";
-  const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light"];
+  type IslandTheme = "obsidian" | "glass" | "tinted" | "light" | "neon";
+  const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light", "neon"];
 
   const s = $derived(nook.settings!);
   const themeNames = $derived<Record<ThemeSetting, string>>({
-    system: tr("Systeem", "System"), light: tr("Licht", "Light"), dark: tr("Donker", "Dark"),
+    system: tr("Systeem", "System"), light: tr("Licht", "Light"), dark: tr("Donker", "Dark"), neon: tr("Neon", "Neon"),
   });
   const islandThemeNames = $derived<Record<IslandTheme, string>>({
     obsidian: tr("Diepzwart", "Obsidian"),
     glass: tr("Rookglas", "Glass"),
     tinted: tr("Getint", "Tinted"),
     light: tr("Licht", "Light"),
+    neon: tr("Neon", "Neon"),
   });
   const densityNames = $derived<Record<Density, string>>({
     compact: tr("Compact", "Compact"), comfortable: tr("Comfortabel", "Comfortable"), spacious: tr("Ruim", "Spacious"),
@@ -42,6 +43,13 @@
     accessory = next;
     setAccessory(next);
   }
+  // Neon is one look for the whole app: picking it lights up the island too (another island theme can still be picked).
+  function pickTheme(next: ThemeSetting) {
+    void nook.saveSettings({ theme: next });
+    if (next === "neon") setIslandTheme("neon");
+    else if (islandTheme === "neon") setIslandTheme("obsidian");
+  }
+
   function setIslandTheme(next: IslandTheme) {
     islandTheme = next;
     try {
@@ -63,7 +71,7 @@
 <div class="group">
   <div class="row">
     <span>{tr("Weergave", "Appearance")}</span>
-    <Segmented label={tr("Weergave", "Appearance")} value={s.theme} options={THEMES.map((t) => ({ value: t, label: themeNames[t] }))} onchange={(t) => nook.saveSettings({ theme: t })} />
+    <Segmented label={tr("Weergave", "Appearance")} value={s.theme} options={THEMES.map((t) => ({ value: t, label: themeNames[t] }))} onchange={pickTheme} />
   </div>
   <p class="faint note">{tr("Systeem volgt de lichte of donkere modus van je computer.", "System follows your computer's light or dark mode.")}</p>
   <div class="row">
@@ -86,7 +94,7 @@
       <span>{tr("Eiland-thema", "Island theme")}</span>
       <Segmented label={tr("Eiland-thema", "Island theme")} value={islandTheme} options={ISLAND_THEMES.map((t) => ({ value: t, label: islandThemeNames[t] }))} onchange={setIslandTheme} />
     </div>
-    <p class="faint note">{tr("Stijl van het Dynamic Island bovenaan je scherm: diepzwart, halfdoorzichtig glas, in Nooks kleur getint, of licht.", "Style of the Dynamic Island at the top of your screen: deep black, translucent glass, tinted in Nook's color, or light.")}</p>
+    <p class="faint note">{tr("Stijl van het Dynamic Island bovenaan je scherm: diepzwart, halfdoorzichtig glas, in Nooks kleur getint, licht, of gloeiend neon.", "Style of the Dynamic Island at the top of your screen: deep black, translucent glass, tinted in Nook's color, light, or glowing neon.")}</p>
   {/if}
 </div>
 <h3>{tr("Tekst en indeling", "Text and layout")}</h3>
