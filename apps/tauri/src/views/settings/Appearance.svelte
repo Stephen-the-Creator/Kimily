@@ -7,6 +7,7 @@
   import { tr } from "../../lib/i18n.svelte";
   import { ACCENTS, DENSITIES, THEMES, themeAccent, resolveTheme, type Density, type ThemeSetting } from "../../lib/theme";
   import { notifyIslandPrefs } from "../../lib/island-tabs";
+  import { NEON_RIMS, readNeonRim, saveNeonRim, type NeonRim } from "../../lib/neon-rim";
 
   type IslandTheme = "obsidian" | "glass" | "tinted" | "light" | "neon";
   const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light", "neon"];
@@ -50,6 +51,22 @@
     else if (islandTheme === "neon") setIslandTheme("obsidian");
   }
 
+  let neonRim = $state<NeonRim>(readNeonRim());
+  const neonRimNames = $derived<Record<NeonRim, string>>({
+    classic: tr("Klassiek", "Classic"),
+    aurora: tr("Poollicht", "Aurora"),
+    sunset: tr("Zonsondergang", "Sunset"),
+    ocean: tr("Oceaan", "Ocean"),
+    fire: tr("Vuur", "Fire"),
+    candy: tr("Snoep", "Candy"),
+    mono: tr("Eén kleur", "One color"),
+  });
+  function pickNeonRim(next: NeonRim) {
+    neonRim = next;
+    saveNeonRim(next);
+    notifyIslandPrefs();
+  }
+
   function setIslandTheme(next: IslandTheme) {
     islandTheme = next;
     try {
@@ -60,7 +77,7 @@
 </script>
 
 <div class="preview-stage">
-  <div class="preview-pill island-theme-{islandTheme}">
+  <div class="preview-pill island-theme-{islandTheme} neon-rim-{neonRim}">
     <Orb size={24} mood="idle" movable alive />
     <span class="preview-title">Nook</span>
     <span class="preview-time">12:42</span>
@@ -95,6 +112,25 @@
       <Segmented label={tr("Eiland-thema", "Island theme")} value={islandTheme} options={ISLAND_THEMES.map((t) => ({ value: t, label: islandThemeNames[t] }))} onchange={setIslandTheme} />
     </div>
     <p class="faint note">{tr("Stijl van het Dynamic Island bovenaan je scherm: diepzwart, halfdoorzichtig glas, in Nooks kleur getint, licht, of gloeiend neon.", "Style of the Dynamic Island at the top of your screen: deep black, translucent glass, tinted in Nook's color, light, or glowing neon.")}</p>
+    {#if islandTheme === "neon"}
+      <div class="row">
+        <span>{tr("Randkleuren", "Rim colors")}</span>
+        <div class="swatches" role="radiogroup" aria-label={tr("Randkleuren", "Rim colors")}>
+          {#each NEON_RIMS as r (r)}
+            <button
+              class="swatch rim-swatch neon-rim-{r}"
+              class:on={neonRim === r}
+              role="radio"
+              aria-checked={neonRim === r}
+              aria-label={neonRimNames[r]}
+              title={neonRimNames[r]}
+              onclick={() => pickNeonRim(r)}
+            ></button>
+          {/each}
+        </div>
+      </div>
+      <p class="faint note">{tr("De kleuren van het licht dat rond het eiland loopt. Klassiek begint bij Nooks kleur.", "The colors of the light that runs around the island. Classic starts from Nook's color.")}</p>
+    {/if}
   {/if}
 </div>
 <h3>{tr("Tekst en indeling", "Text and layout")}</h3>
@@ -137,5 +173,12 @@
   }
   .preview-pill:hover { border-color: var(--island-edge-hover); }
   .preview-title { font: var(--text-detail); font-weight: 600; flex: 1; }
+  /* A rim palette as a little wheel of its three colors (`.neon-rim-*` in app.css). */
+  .rim-swatch {
+    background: conic-gradient(var(--neon-a), var(--neon-b), var(--neon-c), var(--neon-a));
+    transition: transform var(--motion-quick), box-shadow var(--motion-quick);
+  }
+  .rim-swatch:hover { transform: scale(1.12); }
+  .rim-swatch.on { box-shadow: 0 0 10px var(--neon-b); }
   .preview-time { font: var(--text-detail); font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0.8; }
 </style>

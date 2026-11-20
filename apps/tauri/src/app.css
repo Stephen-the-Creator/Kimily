@@ -612,3 +612,17 @@ kbd { font-family: var(--font); }
   pointer-events: none;
 }
 .island-theme-neon .pill.island:hover::before { opacity: 1; }
+
+/* Rim colors of the Neon island (Settings › Appearance › Rim colors, `lib/neon-rim.ts`). They come after
+   `.island-theme-neon` on purpose: on the same element, the palette wins over the theme's own colors. */
+.neon-rim-classic { --neon-a: var(--orb-base); --neon-b: #a855f7; --neon-c: #ff3ea5; }
+.neon-rim-aurora { --neon-a: #2ef2b4; --neon-b: #22e4ff; --neon-c: #a855f7; }
+.neon-rim-sunset { --neon-a: #ffc24d; --neon-b: #ff6b4a; --neon-c: #ff3ea5; }
+.neon-rim-ocean { --neon-a: #4cc9ff; --neon-b: #2563eb; --neon-c: #22e4ff; }
+.neon-rim-fire { --neon-a: #ffe14d; --neon-b: #ff7a1a; --neon-c: #ff2d55; }
+.neon-rim-candy { --neon-a: #ff7ad9; --neon-b: #b98cff; --neon-c: #7af0ff; }
+.neon-rim-mono {
+  --neon-a: var(--orb-base);
+  --neon-b: color-mix(in srgb, var(--orb-base) 45%, transparent);
+  --neon-c: color-mix(in srgb, var(--orb-base) 80%, #ffffff);
+}

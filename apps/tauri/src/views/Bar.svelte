@@ -11,6 +11,7 @@
   import Orb from "../components/Orb.svelte";
   import Icon from "../components/Icon.svelte";
   import Ico from "../components/ui/Ico.svelte";
+  import { NEON_RIM_KEY, readNeonRim, type NeonRim } from "../lib/neon-rim";
   import { fly, fade } from "svelte/transition";
   import { cubicOut, backOut } from "svelte/easing";
   import { motion } from "../lib/motion";
@@ -120,8 +121,10 @@
   function refreshWeather(force = false) {
     fetchIslandWeather(force).then((w) => (weather = w)).catch(() => {});
   }
+  let neonRim = $state<NeonRim>(readNeonRim());
   function syncIslandPrefs(refreshWx = false) {
     islandTheme = (localStorage.getItem("island.theme") as IslandTheme) || "obsidian";
+    neonRim = readNeonRim();
     hiddenTabs = readHiddenTabs();
     if (refreshWx) refreshWeather(true);
   }
@@ -130,6 +133,7 @@
     const timer = setInterval(() => refreshWeather(true), 30 * 60_000);
     const sync = (e: StorageEvent) => {
       if (e.key === "island.theme") islandTheme = (e.newValue as IslandTheme) || "obsidian";
+      if (e.key === NEON_RIM_KEY) neonRim = readNeonRim();
       if (e.key === WEATHER_CITY_KEY || e.key === WEATHER_ENABLED_KEY) refreshWeather(true);
       if (e.key === HIDDEN_TABS_KEY) hiddenTabs = readHiddenTabs();
     };
@@ -713,7 +717,7 @@
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && escape()} onblur={blurClose} onfocus={() => setTimeout(() => (barDraft.picking = false), 300)} />
 
-<div class="bar island-theme-{islandTheme}" class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave}>
+<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave}>
   {#if !expanded && strip && agents.attention}
     {@const card = agents.attention}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
