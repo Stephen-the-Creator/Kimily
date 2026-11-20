@@ -1,0 +1,95 @@
+# Builds Kimily.exe on Windows and attaches it to a GitHub release.
+#
+# Start it by pushing a version tag:   git tag v0.1.1 && git push origin v0.1.1
+# or by hand under Actions › Release › Run workflow (enter a tag such as v0.1.1).
+# The release is created when it doesn't exist yet; an existing release gets its Kimily.exe replaced.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (for example v0.1.1). Created on the selected branch if it doesn't exist yet.
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build Kimily.exe and publish
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write # create the release and upload the exe
+    defaults:
+      run:
+        working-directory: apps/tauri
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/tauri
+      - run: npm ci
+      - name: Interface tests
+        run: npm test
+      - name: Check the tag
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+([-.][0-9A-Za-z.]+)?$') { throw "Tag '$env:TAG' is not a version like v0.1.1." }
+      # The version in the tag (without the "v") is stamped into the exe, so the About page matches the release.
+      - name: Build the app
+        shell: pwsh
+        run: |
+          # A config file instead of inline JSON: quotes in arguments to npx.cmd don't survive PowerShell intact.
+          @{ version = $env:TAG.TrimStart('v') } | ConvertTo-Json | Set-Content -LiteralPath release-version.json -Encoding utf8
+          npx tauri build --ci --no-bundle --config release-version.json
+          if ($LASTEXITCODE -ne 0) { throw 'tauri build failed' }
+      - name: Collect Kimily.exe and its checksum
+        shell: pwsh
+        run: |
+          $built = @('target/release/Kimily.exe', 'target/release/nook.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $built) { throw 'No app executable found in target/release.' }
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item $built out/Kimily.exe
+          $hash = (Get-FileHash -LiteralPath out/Kimily.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Kimily.exe" | Set-Content -LiteralPath out/SHA256SUMS.txt -Encoding ascii
+          '## Kimily.exe' >> $env:GITHUB_STEP_SUMMARY
+          "Tag: ``$env:TAG``, SHA-256: ``$hash``. The build is unsigned." >> $env:GITHUB_STEP_SUMMARY
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh release view $env:TAG --repo $env:REPO *> $null
+          if ($LASTEXITCODE -ne 0) {
+            $notes = @"
+          Kimily for Windows 10/11 (64-bit). Download **Kimily.exe** and run it; no installer needed.
+
+          Windows SmartScreen may warn because the build isn't code-signed yet: click **More info → Run anyway**.
+          Check the download with ``SHA256SUMS.txt`` if you like.
+          "@
+            gh release create $env:TAG --repo $env:REPO --target $env:SHA --title "Kimily $env:TAG" --notes $notes --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw 'Creating the release failed.' }
+          }
+          gh release upload $env:TAG out/Kimily.exe out/SHA256SUMS.txt --repo $env:REPO --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Uploading Kimily.exe failed.' }
