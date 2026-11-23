@@ -8,7 +8,7 @@ type ExportConversation = Pick<Conversation, "title"> & {
 export function conversationMarkdown(conversation: ExportConversation, streaming: Readonly<Record<string, string>> = {}): string {
   const messages = conversation.messages.map((message) => {
     const text = message.streaming ? streaming[message.id] ?? message.text : message.text;
-    return ["## " + (message.fromUser ? tr("Jij", "You") : "Nook"), message.attachment ? tr("Bijlage: {name}", "Attachment: {name}", { name: message.attachment }) : "", text].filter(Boolean).join("\n\n");
+    return ["## " + (message.fromUser ? tr("Jij", "You") : "Kimily"), message.attachment ? tr("Bijlage: {name}", "Attachment: {name}", { name: message.attachment }) : "", text].filter(Boolean).join("\n\n");
   });
   return [`# ${conversation.title}`, ...messages].join("\n\n");
 }

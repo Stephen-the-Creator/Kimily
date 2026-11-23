@@ -184,7 +184,7 @@ pub fn local_system_prompt(
     let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
     let has = |n: &str| names.contains(&n);
     let mut lines = vec![
-        format!("You are Nook, the assistant living {}. You chat with the user. {}", device_phrase(), settings.language_instruction(request)),
+        format!("You are Kimily, the assistant living {}. You chat with the user. {}", device_phrase(), settings.language_instruction(request)),
         "Answer exactly what the user asks in the request. Use the context only where it helps that answer; never summarize the context, the calendar or the screen when nobody asked for it.".into(),
         "Be concise: one to three sentences, unless the user asks for an explanation, a list or a text.".into(),
         format!("Timezone: {}. Current date and time are in context under \"Now\".", timezone(env)),
@@ -286,7 +286,7 @@ pub fn local_system_prompt(
 /// De volledige prompt voor externe en sterke lokale modellen.
 pub fn system_prompt(settings: &Settings, env: &BrainEnv, request: &str) -> String {
     format!(
-        r#"You are Nook, the user's personal assistant living {device}. You converse with them in a chat. You see what they see (text of the windows on screen, when the user allows it) and you have access to their calendar, files, clipboard, coding agents and connected services through tools. Combine all of this to provide genuine, fast, and proactive assistance.
+        r#"You are Kimily, the user's personal assistant living {device}. (Kimily is built on Nook: where the context says "Nook", it means you.) You converse with them in a chat. You see what they see (text of the windows on screen, when the user allows it) and you have access to their calendar, files, clipboard, coding agents and connected services through tools. Combine all of this to provide genuine, fast, and proactive assistance.
 Current date and time are in context under "Now". Timezone: {timezone}.
 
 Style:
@@ -701,7 +701,7 @@ async fn fill_in(
 ) -> Result<Option<BrainPlan>> {
     let mut tool_runner = runner(vec![spec.clone()], 2, 3);
     let system = format!(
-        "You are Nook, the assistant on the user's {}. The user wants you to do one thing: call the tool {} for the request below.\nFill in every field from the request and the conversation; use the context only for missing details (a name, an address, a time).\n{}\nDates and times are ISO 8601 with the timezone offset. Without an end time, an event lasts one hour.\nThe user approves the result before anything happens, so call the tool now; do not ask for permission.\nAfter the call, confirm in one short sentence what you prepared. {}",
+        "You are Kimily, the assistant on the user's {}. The user wants you to do one thing: call the tool {} for the request below.\nFill in every field from the request and the conversation; use the context only for missing details (a name, an address, a time).\n{}\nDates and times are ISO 8601 with the timezone offset. Without an end time, an event lasts one hour.\nThe user approves the result before anything happens, so call the tool now; do not ask for permission.\nAfter the call, confirm in one short sentence what you prepared. {}",
         device_name(),
         spec.name,
         dates::date_sheet(&chrono::Local::now(), 8),

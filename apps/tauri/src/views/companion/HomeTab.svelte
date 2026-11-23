@@ -147,7 +147,7 @@
 <div class="tab">
   <div class="scroll">
     <div bind:this={header}>
-      <PanelHeader title="Nook" {view} onorb={() => header && onorb((header.querySelector(".orb") as HTMLElement).getBoundingClientRect())} {oncomputers} {ongear} />
+      <PanelHeader title="Kimily" {view} onorb={() => header && onorb((header.querySelector(".orb") as HTMLElement).getBoundingClientRect())} {oncomputers} {ongear} />
     </div>
     <div class="top">
       <ConnectionLine {view} />

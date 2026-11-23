@@ -11,7 +11,7 @@ mod catalog;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 /// One row of a catalog: English, German, French, Spanish.
 pub type Row = (&'static str, &'static str, &'static str, &'static str);
@@ -53,7 +53,42 @@ pub fn translate(code: &str, nl: &'static str, en: &'static str) -> &'static str
 
 /// A fixed text in the current language.
 pub fn tr(nl: &'static str, en: &'static str) -> &'static str {
-    translate(language(), nl, en)
+    brand(translate(language(), nl, en))
+}
+
+/// Kimily is built on Nook: the texts keep Nook's name in the source (so they stay in step with upstream) and are
+/// shown with Kimily's, as `tr` does in the interface (`i18n.svelte.ts`). Only the name as a word changes: "Nook",
+/// "Nook's" and "Nooks"; `NookTheme`, `nook-core` or a path stay as they are.
+pub fn rebrand(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 8);
+    let mut rest = text;
+    while let Some(at) = rest.find("Nook") {
+        let before = rest[..at].chars().next_back();
+        let after = &rest[at + 4..];
+        let next = after.chars().next();
+        let word_start = !before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '/' || c == '.');
+        let plural = next == Some('s') && !after[1..].chars().next().is_some_and(|c| c.is_alphanumeric());
+        let word_end = plural || !next.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '-');
+        out.push_str(&rest[..at]);
+        if word_start && word_end {
+            out.push_str("Kimily");
+        } else {
+            out.push_str("Nook");
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `rebrand` for the static texts `tr` hands out: each text is renamed once and kept, so `tr` stays `&'static str`.
+fn brand(text: &'static str) -> &'static str {
+    if !text.contains("Nook") {
+        return text;
+    }
+    static DONE: OnceLock<Mutex<HashMap<&'static str, &'static str>>> = OnceLock::new();
+    let mut done = DONE.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner());
+    *done.entry(text).or_insert_with(|| Box::leak(rebrand(text).into_boxed_str()))
 }
 
 /// A text with `{name}` placeholders in the current language.

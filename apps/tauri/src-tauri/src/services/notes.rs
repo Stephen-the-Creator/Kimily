@@ -266,7 +266,7 @@ async fn finish(app: &AppHandle, mut note: Note, mine: Vec<TimedWord>, theirs: V
     services.notes.lock().unwrap_or_else(|e| e.into_inner()).save(&note);
     emit_live(app);
     show_in_chat(app, &note);
-    services.platform.system.notify("Nook", &format!("Gespreksnotitie klaar: {}", note.title));
+    services.platform.system.notify("Kimily", &nook_core::i18n::trf("Gespreksnotitie klaar: {title}", "Call notes ready: {title}", &[("title", &note.title)]));
 }
 
 /// De notitie in een eigen Nook: samenvatting, kernpunten en to-do's, met het voorstel ze als open punten te bewaren.

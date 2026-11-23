@@ -79,7 +79,7 @@
 <div class="preview-stage">
   <div class="preview-pill island-theme-{islandTheme} neon-rim-{neonRim}">
     <Orb size={24} mood="idle" movable alive />
-    <span class="preview-title">Nook</span>
+    <span class="preview-title">Kimily</span>
     <span class="preview-time">12:42</span>
   </div>
 </div>

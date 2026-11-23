@@ -269,7 +269,7 @@ mod windows {
         let script = format!("Set-Location -LiteralPath '{}'; {command}", folder_text.replace('\'', "''"));
         let mut c = Command::new("cmd");
         c.creation_flags(CREATE_NO_WINDOW);
-        c.args(["/C", "start", "\"Nook\"", "powershell", "-NoExit", "-Command", &script]);
+        c.args(["/C", "start", "\"Kimily\"", "powershell", "-NoExit", "-Command", &script]);
         spawn(c)
     }
 }

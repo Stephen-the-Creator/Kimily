@@ -59,7 +59,9 @@ export function translate(lang: AppLanguage, nl: string, en: string): string {
   return entry?.[lang] ?? en;
 }
 
-const brand = (s: string) => s.replace(/\bNooks\b/g, "Kimilys").replace(/\bNook's\b/g, "Kimily's").replace(/\bNook\b/g, "Kimily");
+/// Kimily is built on Nook: texts keep Nook's name in the source and are shown with Kimily's (`rebrand` in
+/// core/src/i18n does the same for the Rust side). For a name shown without `tr`, use `brand` directly.
+export const brand = (s: string) => s.replace(/\bNooks\b/g, "Kimilys").replace(/\bNook's\b/g, "Kimily's").replace(/\bNook\b/g, "Kimily");
 
 export function tr(nl: string, en: string, vars?: Vars): string {
   return brand(fill(translate(appLanguage(), nl, en), vars));

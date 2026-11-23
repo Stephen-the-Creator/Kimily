@@ -292,3 +292,12 @@ fn picks_the_language_and_fills_values() {
     assert_eq!(fill("{n} files in {dir}", &[("n", &3), ("dir", &"src")]), "3 files in src");
     assert_eq!(fill("keep {unknown} and {", &[]), "keep {unknown} and {");
 }
+
+
+#[test]
+fn rebrand_renames_the_word_only() {
+    assert_eq!(rebrand("Nook stays at the top. Nook's browser, Nooks kleur."), "Kimily stays at the top. Kimily's browser, Kimilys kleur.");
+    assert_eq!(rebrand("\"Hey Nook\" could not start"), "\"Hey Kimily\" could not start");
+    assert_eq!(rebrand("NookTheme, nook-core, x-Nook-delivery, ~/.Nook and Nookish"), "NookTheme, nook-core, x-Nook-delivery, ~/.Nook and Nookish");
+    assert_eq!(rebrand("Nook"), "Kimily");
+}

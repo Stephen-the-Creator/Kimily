@@ -153,6 +153,11 @@ pub const ROWS: &[Row] = &[
     ("Nook · working on {n}", "Nook · arbeitet an {n}", "Nook · travaille sur {n}", "Nook · trabajando en {n}"),
     ("Nook · 1 Nook is waiting for you", "Nook · 1 Nook wartet auf dich", "Nook · 1 Nook t’attend", "Nook · 1 Nook te espera"),
     ("Nook · {n} Nooks are waiting for you", "Nook · {n} Nooks warten auf dich", "Nook · {n} Nooks t’attendent", "Nook · {n} Nooks te esperan"),
+    ("Call notes ready: {title}", "Gesprächsnotiz fertig: {title}", "Notes d’appel prêtes : {title}", "Notas de la llamada listas: {title}"),
+    // Kimily's tray tooltip names the waiting conversations "chats" (src-tauri/src/platform/desktop.rs).
+    ("Kimily · working on {n}", "Kimily · arbeitet an {n}", "Kimily · travaille sur {n}", "Kimily · trabajando en {n}"),
+    ("Kimily · 1 chat is waiting for you", "Kimily · 1 Chat wartet auf dich", "Kimily · 1 discussion t’attend", "Kimily · 1 chat te espera"),
+    ("Kimily · {n} chats are waiting for you", "Kimily · {n} Chats warten auf dich", "Kimily · {n} discussions t’attendent", "Kimily · {n} chats te esperan"),
     // Platform capabilities & Windows services (core/src/platform.rs, src-tauri/src/platform/*)
     (
         "I cannot read {query} on this platform.",

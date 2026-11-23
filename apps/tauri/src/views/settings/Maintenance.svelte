@@ -53,7 +53,7 @@
   }
 
   const versions = $derived(info ? [
-    `Nook ${info.version}`,
+    `Kimily ${info.version}`,
     `${info.os} ${info.arch}`,
     `Tauri ${info.tauriVersion}`,
     ...(info.webviewVersion ? [`WebView ${info.webviewVersion}`] : []),

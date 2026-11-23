@@ -182,7 +182,7 @@
 
 <div class="chat">
   <NavBar onback={onback}>
-    {#snippet center()}<span class="t"><strong>{title || tr("Nieuwe chat", "New chat")}</strong><small>Nook</small></span>{/snippet}
+    {#snippet center()}<span class="t"><strong>{title || tr("Nieuwe chat", "New chat")}</strong><small>Kimily</small></span>{/snippet}
     {#snippet trailing()}{#if likeTheMac && digest}<button class="more press" aria-label={tr("Meer acties", "More actions")} onclick={(e) => (menu = (e.currentTarget as HTMLElement).getBoundingClientRect())}><Ico name="ellipsis" size={18} stroke={2.4} /></button>{/if}{/snippet}
   </NavBar>
   <ConversationScroll version={[lines.length, last?.text.length, last?.status, sending]}>

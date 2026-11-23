@@ -30,6 +30,6 @@ describe("Nook's conversations", () => {
 
   it("copies as the Mac writes it", () => {
     expect(nookMarkdown("Today", [{ fromNook: false, text: "Hi" }, { fromNook: true, text: "" }, { fromNook: true, text: "Lunch." }]))
-      .toBe("# Today\n\n**You**\n\nHi\n\n**Nook**\n\nLunch.");
+      .toBe("# Today\n\n**You**\n\nHi\n\n**Kimily**\n\nLunch.");
   });
 });

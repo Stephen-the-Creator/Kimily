@@ -56,7 +56,7 @@
     gamer_mode: { icon: "gamepad", label: "Gamer Mode" },
     notes: { icon: "note", label: tr("Notitie", "Note") },
     ai: { icon: "sparkle", label: tr("Meedenken", "Think Along") },
-    system: { icon: "home", label: "Nook" },
+    system: { icon: "home", label: "Kimily" },
   });
 
   const shown = $derived(expanded ? [...inbox.ranked.shown, ...inbox.ranked.rest] : inbox.ranked.shown);

@@ -19,7 +19,7 @@ fn small_window(app: &AppHandle, label: &str, hash: &str, size: (f64, f64)) -> t
         return Ok(());
     }
     WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#{hash}").into()))
-        .title("Nook")
+        .title("Kimily")
         .inner_size(size.0, size.1)
         .decorations(false)
         .transparent(true)

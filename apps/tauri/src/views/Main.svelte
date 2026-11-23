@@ -25,7 +25,7 @@
   import { services, serviceEvents, type NowPlaying } from "../lib/services";
   import type { Target } from "../lib/inbox";
   import type { ChatTerminal } from "../lib/types";
-  import { tr } from "../lib/i18n.svelte";
+  import { brand, tr } from "../lib/i18n.svelte";
   import MicButton from "../components/MicButton.svelte";
   import Music from "./services/Music.svelte";
 
@@ -169,7 +169,7 @@
       case "music": return tr("Muziek", "Music");
       case "workspace": return tr("Werkruimte", "Workspace");
       case "settings": return tr("Instellingen", "Settings");
-      default: return routeTitles[r];
+      default: return brand(routeTitles[r]);
     }
   };
   const routeTitle = $derived(titleOf(route));

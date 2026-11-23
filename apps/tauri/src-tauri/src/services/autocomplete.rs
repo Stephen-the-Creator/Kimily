@@ -304,7 +304,7 @@ pub fn create_ghost(app: &AppHandle, input: &Arc<dyn TextInput>) {
         return;
     }
     match WebviewWindowBuilder::new(app, GHOST, WebviewUrl::App("index.html#ghost".into()))
-        .title("Nook")
+        .title("Kimily")
         .inner_size(300.0, 24.0)
         .decorations(false)
         .transparent(true)

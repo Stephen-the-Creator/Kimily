@@ -1306,7 +1306,7 @@ export function nookGroupTitle(g: NookGroup): string {
 
 /** "Copy conversation": the conversation as Markdown, as the Mac's `ChatExport` writes it. */
 export function nookMarkdown(title: string, lines: Pick<ChatLine, "fromNook" | "text">[]): string {
-  return ["# " + title, ...lines.filter((l) => l.text).map((l) => `**${l.fromNook ? "Nook" : tr("Jij", "You")}**\n\n${l.text}`)].join("\n\n");
+  return ["# " + title, ...lines.filter((l) => l.text).map((l) => `**${l.fromNook ? "Kimily" : tr("Jij", "You")}**\n\n${l.text}`)].join("\n\n");
 }
 
 /** The Mac's greeting, which says how much is there for you ("Good morning. Two things for you."). */

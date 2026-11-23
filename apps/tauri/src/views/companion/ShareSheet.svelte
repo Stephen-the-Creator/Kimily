@@ -12,7 +12,7 @@
 </script>
 
 <div class="share">
-  <div class="bar"><button class="cancel" onclick={onclose}>{tr("Annuleer", "Cancel")}</button><strong>Nook</strong><span></span></div>
+  <div class="bar"><button class="cancel" onclick={onclose}>{tr("Annuleer", "Cancel")}</button><strong>Kimily</strong><span></span></div>
   <div class="scroll">
     <p class="text">{text}</p>
     <div class="card">

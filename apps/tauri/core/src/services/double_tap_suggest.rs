@@ -517,16 +517,16 @@ mod tests {
 
     #[test]
     fn the_hint_says_where_nook_works() {
-        assert!(hint("", None).text.starts_with("Nook writes, changes or fills in"));
+        assert!(hint("", None).text.starts_with("Kimily writes, changes or fills in"));
         assert_eq!(hint("Word", None).text, "Word · Looking at what is in front…");
         let blocked = Scene { blocked: true, ..Default::default() };
-        assert_eq!(hint("1Password", Some(&blocked)).text, "Nook doesn't type in 1Password");
+        assert_eq!(hint("1Password", Some(&blocked)).text, "Kimily doesn't type in 1Password");
         let one = Scene { focus: Focus::Text, selection: "word".into(), via_extension: true, ..Default::default() };
         let h = hint("Edge", Some(&one));
         assert_eq!(h.text, "Edge · 1 word selected: improve, translate or explain it");
         assert_eq!(h.badge.as_deref(), Some("Via your browser"));
         let form = Scene { empty_fields: 1, focus: Focus::Field, ..Default::default() };
-        assert_eq!(hint("Edge", Some(&form)).text, "Edge · 1 empty field: Nook can fill it in");
+        assert_eq!(hint("Edge", Some(&form)).text, "Edge · 1 empty field: Kimily can fill it in");
         assert_eq!(hint("Explorer", Some(&Scene::default())).icon, "app-window");
         assert_eq!(translation_target(Some("en"), "en"), None);
         assert_eq!(translation_target(Some("de"), "de").as_deref(), Some("en"));

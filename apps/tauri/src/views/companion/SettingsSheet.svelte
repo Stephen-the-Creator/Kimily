@@ -217,7 +217,7 @@
       <section>
         <h3>{tr("Over", "About")}</h3>
         <div class="card">
-          <SettingsRow icon="info" title="Nook" detail={version} />
+          <SettingsRow icon="info" title="Kimily" detail={version} />
         </div>
       </section>
     </div>

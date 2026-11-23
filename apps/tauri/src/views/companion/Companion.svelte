@@ -303,7 +303,7 @@
     chats: unreadChats(inbox),
   });
   const tabIcons: Record<CompanionTab, string> = { home: "sparkles", agents: "layers", chats: "messages-square" };
-  const tabLabels: Record<CompanionTab, string> = { home: "Nook", agents: "Agents", chats: "Chats" };
+  const tabLabels: Record<CompanionTab, string> = { home: "Kimily", agents: "Agents", chats: "Chats" };
   const barTabs = $derived(tabs.map((t) => ({ id: t, icon: tabIcons[t], label: tabLabels[t], count: counts[t] })));
 
   /** Every paired computer, checked on the active one, with its icon (a Mac or a PC), whether it is live or can be
