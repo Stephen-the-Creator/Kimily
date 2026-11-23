@@ -11,6 +11,7 @@
   import Orb from "../components/Orb.svelte";
   import Icon from "../components/Icon.svelte";
   import Ico from "../components/ui/Ico.svelte";
+  import NotchShape from "../components/NotchShape.svelte";
   import { NEON_RIM_KEY, readNeonRim, type NeonRim } from "../lib/neon-rim";
   import { fly, fade } from "svelte/transition";
   import { cubicOut, backOut } from "svelte/easing";
@@ -721,6 +722,32 @@
 
   const notched = $derived(!floating && (expanded || (strip && agents.attention) || (islandDisplay !== "orb" && !chipVisible)));
 
+  // The notch's outline follows the island's body (the closed pill or the open panel): measured here, drawn as one
+  // shape by NotchShape behind it, with the shoulders and radii from app.css (`--island-shoulder*`, `--radius-island*`).
+  let barEl = $state<HTMLElement | undefined>();
+  let notch = $state({ x: 0, w: 0, h: 0, s: 0, r: 0 });
+  $effect(() => {
+    const bar = barEl;
+    if (!notched || !bar) return;
+    void [expanded, pillMode, wantWide, strip];
+    const measure = () => {
+      const body = bar.querySelector<HTMLElement>(":scope > .pill, :scope > .panel");
+      if (!body) return;
+      const css = getComputedStyle(bar);
+      const px = (name: string) => parseFloat(css.getPropertyValue(name)) || 0;
+      const s = px(expanded ? "--island-shoulder-panel" : "--island-shoulder");
+      const r = px(expanded ? "--radius-island-panel" : "--radius-island");
+      const next = { x: body.offsetLeft - s, w: body.offsetWidth + 2 * s, h: body.offsetHeight, s, r };
+      if (next.x !== notch.x || next.w !== notch.w || next.h !== notch.h || next.s !== notch.s || next.r !== notch.r) notch = next;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(bar);
+    const body = bar.querySelector<HTMLElement>(":scope > .pill, :scope > .panel");
+    if (body) ro.observe(body);
+    return () => ro.disconnect();
+  });
+
   // What the closed pill is showing; a change slides the new content in instead of swapping it.
   const pillMode = $derived(
     greeting ? "greeting" : showMediaInPill ? "media" : showTimerInPill ? "timer" : showAgentInPill ? "agent" : showEventInPill ? "event" : "idle",
@@ -779,10 +806,11 @@
 <svelte:window onkeydown={keys} onblur={blurClose} onfocus={() => setTimeout(() => (barDraft.picking = false), 300)} />
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:notched class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave} onmousedown={middleDown} onauxclick={middleClick}>
+<div bind:this={barEl} class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:notched class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave} onmousedown={middleDown} onauxclick={middleClick}>
   {#if notched}
-    <span class="shoulder left" aria-hidden="true"></span>
-    <span class="shoulder right" aria-hidden="true"></span>
+    <span class="notch-at" class:tucked style="left: {notch.x}px">
+      <NotchShape width={notch.w} height={notch.h} shoulder={notch.s} radius={notch.r} neon={islandTheme === "neon"} busy={showAgentInPill || (showTimerInPill && focusTimer.running)} hover={inside} />
+    </span>
   {/if}
   {#if !expanded && strip && agents.attention}
     {@const card = agents.attention}
@@ -1035,28 +1063,22 @@
 
 <style>
   .bar { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; box-sizing: border-box; }
-  /* The notch's shoulders: the window is the island plus one shoulder each side, and each shoulder is the island's
-     color with a quarter circle cut out of its lower outer corner, its rim drawn along the curve. */
+  /* The notch: the window is the island plus one shoulder each side. NotchShape draws the island's color and rim as
+     one outline (shoulders, sides, rounded bottom); the body on top of it is see-through, so no seam shows. */
   .bar.notched { --sh: var(--island-shoulder); position: relative; padding: 0 var(--sh); }
   .bar.notched.expanded { --sh: var(--island-shoulder-panel); }
-  .shoulder {
-    position: absolute;
-    top: 0;
-    width: var(--sh);
-    height: var(--sh);
-    pointer-events: none;
+  .notch-at { position: absolute; top: 0; height: 0; z-index: 0; transition: transform 0.28s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.24s ease; }
+  /* Tucked away with the pill (Hide when idle): the outline slides up with it. */
+  .notch-at.tucked { transform: translateY(-28px); opacity: 0.28; }
+  .bar.notched > .pill,
+  .bar.notched > .panel,
+  .bar.notched > .pill:hover {
+    position: relative;
     z-index: 1;
-    animation: shoulder-in 0.32s ease-out;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
   }
-  .shoulder.left {
-    left: 0;
-    background: radial-gradient(circle at 0 100%, transparent calc(var(--sh) - 1.5px), var(--island-edge) calc(var(--sh) - 1px), var(--island-edge) calc(var(--sh) - 0.5px), var(--notch) var(--sh));
-  }
-  .shoulder.right {
-    right: 0;
-    background: radial-gradient(circle at 100% 100%, transparent calc(var(--sh) - 1.5px), var(--island-edge) calc(var(--sh) - 1px), var(--island-edge) calc(var(--sh) - 0.5px), var(--notch) var(--sh));
-  }
-  @keyframes shoulder-in { from { opacity: 0; } }
   .bar.hasChip { flex-direction: column; align-items: center; gap: 4px; }
   .bar.hasChip .pill.round { width: 44px; height: 44px; flex: none; }
   /* The chat chip under the closed round Nook: who wrote, one click opens Nook. */

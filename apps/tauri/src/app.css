@@ -631,5 +631,11 @@ kbd { font-family: var(--font); }
 }
 
 /* At the top of the screen the Neon rim runs down the sides and along the bottom: the top is the screen's edge. */
+/* At the top of the screen the Neon rim is drawn by NotchShape along the notch's whole outline, shoulders included,
+   so the body's own rim and lean stay off there (they would not follow the curve). */
 .island-theme-neon.notched .pill.island::after,
-.island-theme-neon.notched .panel::after { padding-top: 0; }
+.island-theme-neon.notched .panel::after { display: none; }
+.island-theme-neon.notched .pill.island,
+.island-theme-neon.notched .pill.island:hover,
+.island-theme-neon.notched .panel { box-shadow: none; border-color: transparent; }
+.island-theme-neon.notched .pill.island:not(.tucked) { transform: none; }
