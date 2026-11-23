@@ -239,6 +239,13 @@
 </div>
 {/if}
 {#if part === "quiet" && caps?.desktop}
+  <h3>{tr("Niet storen", "Do Not Disturb")}</h3>
+  <div class="group">
+    <label class="row">
+      <span>{tr("Niet storen", "Do Not Disturb")}<br /><small class="faint">{tr("Geen meldingen, kaartjes of geluiden die Nook zelf start, tot je het uitzet. Wat je zelf opent werkt gewoon. Ook met de maan in het eiland.", "No pop-ups, cards or sounds Nook starts by himself until you turn it off. What you open yourself still works. Also with the moon in the island.")}</small></span>
+      <input type="checkbox" role="switch" checked={s.doNotDisturb ?? false} onchange={(e) => nook.saveSettings({ doNotDisturb: e.currentTarget.checked })} />
+    </label>
+  </div>
   <h3>{tr("Meetings en scherm delen", "Meetings and screen sharing")}</h3>
   <div class="group">
     <label class="row">

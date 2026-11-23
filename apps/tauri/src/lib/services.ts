@@ -17,6 +17,8 @@ export interface QuietState {
   silent: boolean;
   excludedFromCapture: boolean;
   hidden: boolean;
+  /** Do Not Disturb is on (switched by hand). */
+  doNotDisturb?: boolean;
   situation: { sharing: boolean; meeting: boolean };
 }
 

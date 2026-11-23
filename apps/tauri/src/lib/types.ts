@@ -41,6 +41,10 @@ export interface Settings {
   panelSize?: "compact" | "medium" | "large" | "full";
   islandDisplay?: "pill" | "time" | "media" | "orb";
   islandHoverOpen?: boolean;
+  /** Milliseconds the pointer rests on the closed pill before it opens on hover (60–1000). */
+  islandHoverDelayMs?: number;
+  /** Do Not Disturb, switched by hand: no pop-ups or sounds of Nook's own; a moon in the island. */
+  doNotDisturb?: boolean;
   /// How large an agent notice is in the bar: a card ("detailed") or one line in the bar ("compact").
   agentNotice: "detailed" | "compact" | "system";
   sounds: boolean;

@@ -48,6 +48,12 @@ pub const ENTRIES: &[Entry] = &[
     },
     Entry { id: "hide_when_idle", kind: Kind::Toggle, section: "notch", about: "Hide Nook's bar when there is nothing to show." },
     Entry {
+        id: "do_not_disturb",
+        kind: Kind::Toggle,
+        section: "sound",
+        about: "Do Not Disturb: no pop-ups or sounds of Nook's own until it is switched off; the island shows a moon.",
+    },
+    Entry {
         id: "theme",
         kind: Kind::Choice(&["system", "light", "dark", "neon"]),
         section: "appearance",
@@ -216,6 +222,7 @@ pub fn current(settings: &Settings, id: &str) -> String {
         "answer_language" => settings.language.clone(),
         "bar_placement" => if settings.placement == "floating" { "floating" } else { "top" }.into(),
         "hide_when_idle" => flag(settings.hide_when_idle),
+        "do_not_disturb" => flag(settings.do_not_disturb),
         "theme" => settings.theme.clone(),
         "energy_mode" => energy_id(settings.energy_mode).into(),
         "web_search" => flag(settings.web_search),
@@ -240,6 +247,7 @@ pub fn apply(settings: &mut Settings, id: &str, value: &str) {
         "answer_language" => settings.language = value.into(),
         "bar_placement" => settings.placement = value.into(),
         "hide_when_idle" => settings.hide_when_idle = on,
+        "do_not_disturb" => settings.do_not_disturb = on,
         "theme" => settings.theme = value.into(),
         "energy_mode" => {
             settings.energy_mode = match value {

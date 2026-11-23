@@ -2,6 +2,8 @@
 // the Mac's and the iPhone's `NookIcon`), so every icon on Android is the one the iPhone draws. See THIRD-PARTY-NOTICES.md.
 // Only the icons the companion uses are here; add one from lucide-static when a view needs it.
 export const LUCIDE: Record<string, string> = {
+  "app-window": `<rect x="2" y="4" width="20" height="16" rx="2" /> <path d="M10 4v4" /> <path d="M2 8h20" /> <path d="M6 4v4" />`,
+  "chevron-up": `<path d="m18 15-6-6-6 6" />`,
   "play": `<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />`,
   "pause": `<rect x="14" y="3" width="5" height="18" rx="1" /> <rect x="5" y="3" width="5" height="18" rx="1" />`,
   "skip-forward": `<path d="M21 4v16" /> <path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z" />`,

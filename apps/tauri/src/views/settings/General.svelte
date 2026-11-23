@@ -140,6 +140,15 @@
       <span>{tr("Openen bij aanwijzen", "Open on hover")}<br /><small class="faint">{tr("Beweeg de muis over het eiland om het te openen; klapt vanzelf weer in als je wegbeweegt.", "Hover the island to open it; folds back automatically when you move away.")}</small></span>
       <input type="checkbox" role="switch" checked={s.islandHoverOpen ?? false} onchange={(e) => nook.saveSettings({ islandHoverOpen: e.currentTarget.checked })} />
     </label>
+    {#if s.islandHoverOpen}
+      <label class="row">
+        <span>{tr("Wachttijd voor openen", "Delay before opening")}<br /><small class="faint">{tr("Zo lang rust de muis op het eiland voor het opengaat. Wie er alleen overheen beweegt, laat het dicht.", "How long the pointer rests on the island before it opens. Just passing over it leaves it closed.")}</small></span>
+        <span class="inline">
+          <input type="range" min="60" max="1000" step="20" value={s.islandHoverDelayMs ?? 240} oninput={(e) => nook.saveSettings({ islandHoverDelayMs: Number(e.currentTarget.value) })} />
+          <span class="faint">{s.islandHoverDelayMs ?? 240} ms</span>
+        </span>
+      </label>
+    {/if}
     <label class="row">
       <span>{tr("Verbergen in rust", "Hide when idle")}<br /><small class="faint">{tr("Schuift het eiland weg als er niets gebeurt; schuift weer tevoorschijn bij de bovenrand, muziek of een agent.", "Tucks the island away when nothing is happening; slides back at the top edge, for music, or an agent.")}</small></span>
       <input type="checkbox" role="switch" checked={s.hideWhenIdle} onchange={(e) => nook.saveSettings({ hideWhenIdle: e.currentTarget.checked })} />

@@ -54,6 +54,8 @@ pub struct QuietState {
     pub excluded_from_capture: bool,
     /// Nook's windows are put away until it is over.
     pub hidden: bool,
+    /// Do Not Disturb is on (switched by hand): quiet whatever else is going on; the island shows a moon.
+    pub do_not_disturb: bool,
     /// Why, for the line in Settings.
     pub situation: QuietSituation,
 }
@@ -94,6 +96,16 @@ pub fn state(situation: QuietSituation, sharing: QuietBehavior, meeting: QuietBe
                 state.hidden = true;
             }
         }
+    }
+    state
+}
+
+/// The state with Do Not Disturb applied: switched on by hand, Nook keeps quiet as in a meeting whatever else is going
+/// on; sharing or a meeting can still make him leave a share or hide.
+pub fn with_do_not_disturb(mut state: QuietState, on: bool) -> QuietState {
+    state.do_not_disturb = on;
+    if on {
+        state.silent = true;
     }
     state
 }
@@ -340,6 +352,16 @@ mod tests {
         let s = state(QuietSituation { sharing: true, meeting: false }, QuietBehavior::Normal, QuietBehavior::Normal);
         assert_eq!(s.status_text(), "Je deelt je scherm");
         assert_eq!(QuietState::default().status_text(), "Geen meeting, je deelt je scherm niet");
+    }
+
+    #[test]
+    fn do_not_disturb_keeps_quiet_and_keeps_the_rest() {
+        let calm = with_do_not_disturb(QuietState::default(), true);
+        assert!(calm.silent && calm.do_not_disturb && !calm.hidden && !calm.excluded_from_capture);
+        let sharing = state(QuietSituation { sharing: true, meeting: false }, QuietBehavior::Hide, QuietBehavior::Normal);
+        let both = with_do_not_disturb(sharing, true);
+        assert!(both.hidden && both.excluded_from_capture && both.silent);
+        assert_eq!(with_do_not_disturb(QuietState::default(), false), QuietState::default());
     }
 
     // Screen sharing

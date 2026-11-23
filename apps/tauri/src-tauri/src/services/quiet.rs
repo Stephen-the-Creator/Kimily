@@ -79,7 +79,10 @@ pub fn view(app: &AppHandle, watching: bool) -> QuietView {
 /// would be for no one, so it is skipped.
 fn needed(app: &AppHandle, settings: &Settings) -> bool {
     let viewed = app.try_state::<Services>().and_then(|s| *lock(&s.quiet.viewed)).is_some_and(|t| t.elapsed().as_secs_f64() < VIEWED_FOR);
-    settings.quiet_while_sharing != QuietBehavior::Normal || settings.quiet_in_meetings != QuietBehavior::Normal || viewed
+    settings.do_not_disturb
+        || settings.quiet_while_sharing != QuietBehavior::Normal
+        || settings.quiet_in_meetings != QuietBehavior::Normal
+        || viewed
 }
 
 /// Events going on in the calendars Nook knows, from their cache (no network).
@@ -120,7 +123,10 @@ pub fn tick(app: &AppHandle) {
     *lock(&services.quiet.last_tick) = Some(Instant::now());
     let settings = app.state::<AppState>().settings();
     let situation = situation(app, &settings);
-    let state = quiet::state(situation, settings.quiet_while_sharing, settings.quiet_in_meetings);
+    let state = quiet::with_do_not_disturb(
+        quiet::state(situation, settings.quiet_while_sharing, settings.quiet_in_meetings),
+        settings.do_not_disturb,
+    );
     let before = std::mem::replace(&mut *lock(&services.quiet.state), state);
     protect(app, settings.hide_from_captures || state.excluded_from_capture);
     if state.hidden != before.hidden {

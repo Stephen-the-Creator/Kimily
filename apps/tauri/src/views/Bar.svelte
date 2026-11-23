@@ -326,9 +326,11 @@
     clearTimeout(closeTimer);
     if (!expanded && !strip && hoverOpen) {
       clearTimeout(hoverTimer);
+      // Only a pointer that rests opens it (Settings › General › Delay before opening): passing over it leaves it shut.
+      const delay = Math.max(60, Math.min(1000, nook.settings?.islandHoverDelayMs ?? 240));
       hoverTimer = setTimeout(() => {
         if (inside && !expanded) open();
-      }, 240);
+      }, delay);
     }
   }
 
@@ -662,6 +664,61 @@
   const showTimerInPill = $derived(!showMediaInPill && focusTimer.active && islandDisplay !== "orb");
   const showAgentInPill = $derived(!showMediaInPill && !showTimerInPill && islandDisplay === "pill" && (agents.pending > 0 || activeAgents.length > 0));
   const showEventInPill = $derived(!showMediaInPill && !showTimerInPill && !showAgentInPill && !!nextEvent && islandDisplay !== "orb");
+  // Getting around the island without aiming, as on Isle: the wheel or a two-finger swipe over the tabs turns the page
+  // (one page a notch, at most one every 0.2 s), Ctrl+Tab / Ctrl+Shift+Tab (or Ctrl+Page Down / Up) go round the tabs,
+  // Ctrl+1 … Ctrl+9 open the first … ninth tab shown, and a middle click anywhere on the island plays or pauses.
+  function tabButtons(): HTMLButtonElement[] {
+    return navEl ? [...navEl.querySelectorAll<HTMLButtonElement>(":scope > button")] : [];
+  }
+  function stepTab(dir: 1 | -1, wrap: boolean) {
+    const tabs = tabButtons();
+    if (!tabs.length) return;
+    const at = tabs.findIndex((b) => b.classList.contains("on"));
+    let next = at + dir;
+    if (wrap) next = (next + tabs.length) % tabs.length;
+    else next = Math.max(0, Math.min(tabs.length - 1, next));
+    if (next !== at) tabs[next]?.click();
+  }
+  let lastWheel = 0;
+  function wheelTabs(e: WheelEvent) {
+    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (Math.abs(delta) < 4) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastWheel < 200) return;
+    lastWheel = now;
+    stepTab(delta > 0 ? 1 : -1, false);
+  }
+  function keys(e: KeyboardEvent) {
+    if (e.key === "Escape") return escape();
+    if (!expanded || !e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === "Tab" || e.key === "PageDown" || e.key === "PageUp") {
+      e.preventDefault();
+      stepTab(e.key === "PageUp" || (e.key === "Tab" && e.shiftKey) ? -1 : 1, true);
+    } else if (/^[1-9]$/.test(e.key) && !e.shiftKey) {
+      const tab = tabButtons()[Number(e.key) - 1];
+      if (tab) {
+        e.preventDefault();
+        tab.click();
+      }
+    }
+  }
+  function middleDown(e: MouseEvent) {
+    // Without this a middle press starts the browser's autoscroll instead of reaching the click.
+    if (e.button === 1) e.preventDefault();
+  }
+  function middleClick(e: MouseEvent) {
+    if (e.button !== 1 || !playing) return;
+    e.preventDefault();
+    void services.media("playPause");
+  }
+
+  // Do Not Disturb (switched by hand): the moon in the header turns it on and off, the pill shows it while it is on.
+  const dnd = $derived(quiet.state?.doNotDisturb ?? nook.settings?.doNotDisturb ?? false);
+  function toggleDnd() {
+    void nook.saveSettings({ doNotDisturb: !dnd });
+  }
+
   const notched = $derived(!floating && (expanded || (strip && agents.attention) || (islandDisplay !== "orb" && !chipVisible)));
 
   // What the closed pill is showing; a change slides the new content in instead of swapping it.
@@ -719,9 +776,10 @@
   });
 </script>
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && escape()} onblur={blurClose} onfocus={() => setTimeout(() => (barDraft.picking = false), 300)} />
+<svelte:window onkeydown={keys} onblur={blurClose} onfocus={() => setTimeout(() => (barDraft.picking = false), 300)} />
 
-<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:notched class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:notched class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave} onmousedown={middleDown} onauxclick={middleClick}>
   {#if notched}
     <span class="shoulder left" aria-hidden="true"></span>
     <span class="shoulder right" aria-hidden="true"></span>
@@ -791,8 +849,10 @@
             <span class="orbwrap"><Orb size={20} mood={focusTimer.finished ? "seen" : mood} happy={focusTimer.finished} /></span>
             <span class="dot {focusTimer.finished ? 'unread' : focusTimer.running ? 'working' : 'waiting'}"></span>
           </span>
-          <span class="island-title">
-            {#if focusTimer.finished}
+          <span class="island-title" class:on-break={focusTimer.plan.on && focusTimer.phase === "break"}>
+            {#if focusTimer.plan.on && focusTimer.phase === "break"}
+              {focusTimer.formatted} · {tr("Pauze", "Break")}
+            {:else if focusTimer.finished}
               {tr("Klaar!", "Time's up!")}
             {:else if focusTimer.label}
               {focusTimer.formatted} · {focusTimer.label}
@@ -841,6 +901,7 @@
             {#if weather}
               <span class="island-weather" title="{weather.place} · {Math.round(weather.temp)} °C">{weather.icon} {Math.round(weather.temp)}°</span>
             {/if}
+            {#if dnd}<span class="island-moon" title={tr("Niet storen", "Do Not Disturb")}><Ico name="moon" size={11} fill="currentColor" stroke={0} /></span>{/if}
             <span class="island-clock">{islandDisplay === "time" ? dateTimeText : timeText}</span>
             {#if barDraft.files}<span class="island-badge">{barDraft.files}</span>{/if}
           </span>
@@ -884,7 +945,7 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <header onmousedown={drag}>
         <Orb size={20} {mood} {ring} movable alive onpiece={(id) => { select("nook"); nook.select(id); }} />
-        <nav bind:this={navEl} class:glide={glider.ready} onwheel={(e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY; } }}>
+        <nav bind:this={navEl} class:glide={glider.ready} onwheel={wheelTabs}>
           <span class="tab-glider" aria-hidden="true" style="transform: translateX({glider.x}px); width: {glider.w}px"></span>
           {#if tabVisible("home")}<button class:on={shown === "home"} onclick={() => select("home")}>Home</button>{/if}
           <button class:on={shown === "nook"} onclick={() => select("nook")}>Kimily {#if nook.waiting}<span class="dot waiting"></span>{/if}</button>
@@ -903,10 +964,18 @@
           {/if}
         </nav>
         <span class="spacer"></span>
+        <button
+          class="ghost icon dnd"
+          class:on={dnd}
+          aria-pressed={dnd}
+          title={dnd ? tr("Niet storen staat aan: klik om uit te zetten", "Do Not Disturb is on: click to turn it off") : tr("Niet storen: geen meldingen of geluiden van Nook", "Do Not Disturb: no pop-ups or sounds from Nook")}
+          aria-label={tr("Niet storen", "Do Not Disturb")}
+          onclick={toggleDnd}
+        ><Ico name="moon" size={14} fill={dnd ? "currentColor" : "none"} /></button>
         <button class="ghost icon lock" class:on={locked} title={locked ? tr("Vergrendeld: klik om te ontgrendelen", "Locked: click to unlock") : tr("Houd Nook open als je wegklikt", "Keep Nook open when you click away")} onclick={() => { locked = !locked; if (locked) pinnedOpen = true; }}><Icon name={locked ? "lock" : "unlock"} size={14} /></button>
-        <button class="ghost icon" title={tr("Verder in het venster (dit gesprek)", "Continue in the window (this conversation)")} onclick={() => api.showMain(nook.activeId ? `nook:${nook.activeId}` : "chat")}>⧉</button>
-        <button class="ghost icon" title={tr("Instellingen", "Settings")} onclick={() => api.showMain("settings")}>⚙</button>
-        <button class="ghost icon close-btn" title={tr("Eiland inklappen", "Fold island")} aria-label={tr("Eiland inklappen", "Fold island")} onclick={() => close(true)}>×</button>
+        <button class="ghost icon" title={tr("Verder in het venster (dit gesprek)", "Continue in the window (this conversation)")} aria-label={tr("Verder in het venster (dit gesprek)", "Continue in the window (this conversation)")} onclick={() => api.showMain(nook.activeId ? `nook:${nook.activeId}` : "chat")}><Ico name="app-window" size={14} /></button>
+        <button class="ghost icon" title={tr("Instellingen", "Settings")} aria-label={tr("Instellingen", "Settings")} onclick={() => api.showMain("settings")}><Ico name="settings" size={14} /></button>
+        <button class="ghost icon close-btn" title={tr("Eiland inklappen", "Fold island")} aria-label={tr("Eiland inklappen", "Fold island")} onclick={() => close(true)}><Ico name="chevron-up" size={15} /></button>
       </header>
       <AgentAlerts
         requests={shown !== "agents"}
@@ -1159,6 +1228,9 @@
     letter-spacing: 0.01em;
     white-space: nowrap;
   }
+  .island-title.on-break { color: var(--mint); }
+  .island-moon { display: inline-flex; color: var(--violet); margin-right: -2px; animation: count-pop var(--motion-reveal); }
+  .icon.dnd.on { color: var(--violet); }
   .island-clock.dim { color: var(--text3); font: var(--text-caption); }
   .island-controls { display: flex; align-items: center; gap: 2px; flex: none; }
   .island-btn {

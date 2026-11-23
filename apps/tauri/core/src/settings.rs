@@ -79,6 +79,9 @@ pub struct Settings {
     pub island_display: String,
     /// Open the island panel when hovering the closed pill.
     pub island_hover_open: bool,
+    /// How long the pointer rests on the closed pill before it opens on hover (milliseconds, 60–1000), so passing over
+    /// it on the way elsewhere leaves it closed.
+    pub island_hover_delay_ms: u32,
     /// How large the bar's notification is when an agent (terminal or Workspace) finishes, fails or waits on you:
     /// "detailed" (a card with the summary and what changed), "compact" (one slim line in the bar) or "system" (a system
     /// notification, with Allow and Deny on a permission request; `nook_core::services::toast`).
@@ -115,6 +118,9 @@ pub struct Settings {
     pub quiet_in_meetings: QuietBehavior,
     /// An event going on in your calendar counts as a meeting.
     pub quiet_use_calendar: bool,
+    /// Do Not Disturb, switched by hand (the moon in the island, Settings › Voice and sound): Nook keeps quiet as in a
+    /// meeting, with no pop-ups or sounds of his own, until you switch it off.
+    pub do_not_disturb: bool,
     /// Nook's windows are always left out of screen sharing, screenshots and recordings (Windows).
     pub hide_from_captures: bool,
     /// The system's screenshot tool does not count as sharing your screen, so Nook appears in your screenshots.
@@ -202,6 +208,7 @@ impl Default for Settings {
             panel_size: "medium".into(),
             island_display: "pill".into(),
             island_hover_open: false,
+            island_hover_delay_ms: 240,
             agent_notice: "detailed".into(),
             sounds: true,
             speak_answers: false,
@@ -224,6 +231,7 @@ impl Default for Settings {
             quiet_while_sharing: QuietBehavior::HideFromShare,
             quiet_in_meetings: QuietBehavior::Quiet,
             quiet_use_calendar: true,
+            do_not_disturb: false,
             hide_from_captures: false,
             show_in_screenshots: false,
             energy_mode: EnergyMode::Automatic,
