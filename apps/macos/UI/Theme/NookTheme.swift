@@ -253,28 +253,28 @@ enum NookTheme {
     /// than a hairline and flatter than the card.
     enum Radius {
         /// Tags, keycaps, and inline code.
-        static let chip: CGFloat = 6
+        static let chip: CGFloat = 8
         /// Buttons, text fields, and toolbar items.
-        static let control: CGFloat = 8
+        static let control: CGFloat = 12
         /// Cards, rows, and notices.
-        static let card: CGFloat = 10
+        static let card: CGFloat = 16
         /// Panels, popovers, and menus.
-        static let panel: CGFloat = 12
+        static let panel: CGFloat = 18
         /// Sheets and the composer tray.
-        static let sheet: CGFloat = 14
+        static let sheet: CGFloat = 22
         /// Your own message's bubble in a conversation.
-        static let bubble: CGFloat = 16
+        static let bubble: CGFloat = 20
         /// A chat app's message bubble: tighter than Nook's own, so long runs of messages stay compact.
-        static let chatBubble: CGFloat = 10
+        static let chatBubble: CGFloat = 16
         /// Where two bubbles of one run meet, on the writer's side: a small rounding, so the run stacks as one column.
-        static let chatJoin: CGFloat = 4
+        static let chatJoin: CGFloat = 6
         /// A card in a conversation: a plan, a question, a task list, a subagent.
-        static let conversationCard: CGFloat = 16
+        static let conversationCard: CGFloat = 22
         /// The notch's own corners. Not for chips or buttons: those use `chip` or `control`.
         static let pill: CGFloat = 20
         /// The composer box, and the tray that runs on from it. With the 32 pt send button 8 pt from the edge, its corner
         /// runs parallel to the button's.
-        static let composer: CGFloat = 16
+        static let composer: CGFloat = 24
     }
 
     /// Spacing on a 4 pt grid. Use these for padding and stack spacing so the panels line up.

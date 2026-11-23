@@ -13,12 +13,12 @@ pub const BAR: &str = "bar";
 
 /// Bar sizes: closed (round orb or Dynamic Island pill) and open (the panel with tabs).
 pub const COLLAPSED: (f64, f64) = (44.0, 44.0);
-/// Dynamic Island pill in resting state (Nook orb + clock or status).
-pub const COLLAPSED_PILL: (f64, f64) = (196.0, 36.0);
+/// Dynamic Island pill in resting state (Nook orb + clock or status), with room for its two shoulders (10 each, `--island-shoulder`).
+pub const COLLAPSED_PILL: (f64, f64) = (216.0, 36.0);
 /// Dynamic Island pill widened for live media controls or active agent status.
-pub const COLLAPSED_PILL_WIDE: (f64, f64) = (312.0, 38.0);
+pub const COLLAPSED_PILL_WIDE: (f64, f64) = (332.0, 38.0);
 /// A compact agent notice: the bar keeps its height and grows wider, with the message and its buttons in the row.
-pub const NOTICE: (f64, f64) = (560.0, 38.0);
+pub const NOTICE: (f64, f64) = (580.0, 38.0);
 /// The closed bar with a chat chip under the round Nook ("Bericht van Peter"): the round Nook on top, the chip below it.
 pub const CHIP: (f64, f64) = (232.0, 82.0);
 /// The open panel's full preset size is this share of the screen's work area, in both directions.

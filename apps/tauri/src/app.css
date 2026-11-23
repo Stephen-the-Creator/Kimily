@@ -8,21 +8,24 @@
   --sidebar: #000000;
   --row-hover: #141415;
   --row-selected: #1c1c1e;
-  --radius-chip: 6px;
-  --radius-control: 8px;
-  --radius-card: 10px;
-  --radius-panel: 12px;
-  --radius-sheet: 14px;
-  --radius-composer: 16px;
+  --radius-chip: 8px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-panel: 18px;
+  --radius-sheet: 22px;
+  --radius-composer: 24px;
   /* The rest of NookTheme.Radius: your own bubble, a chat app's bubble, a card in a conversation, the notch's pill. */
-  --radius-bubble: 16px;
-  --radius-chat-bubble: 10px;
-  --radius-chat-join: 4px;
-  --radius-conversation-card: 16px;
+  --radius-bubble: 20px;
+  --radius-chat-bubble: 16px;
+  --radius-chat-join: 6px;
+  --radius-conversation-card: 22px;
   --radius-pill: 20px;
   /* The Dynamic Island: the closed pill's lower corners and the open panel's. */
-  --radius-island: 18px;
-  --radius-island-panel: 22px;
+  --radius-island: 20px;
+  --radius-island-panel: 32px;
+  /* The concave curve where the island at the top meets the screen's edge (its "shoulders"), closed and open. */
+  --island-shoulder: 10px;
+  --island-shoulder-panel: 18px;
   /* NookTheme.TextStyle: one size and weight per kind of text. Use as `font: var(--text-body)`. */
   --text-caption: 500 10.5px/1.35 var(--font);
   --text-detail: 400 12px/1.45 var(--font);
@@ -626,3 +629,7 @@ kbd { font-family: var(--font); }
   --neon-b: color-mix(in srgb, var(--orb-base) 45%, transparent);
   --neon-c: color-mix(in srgb, var(--orb-base) 80%, #ffffff);
 }
+
+/* At the top of the screen the Neon rim runs down the sides and along the bottom: the top is the screen's edge. */
+.island-theme-neon.notched .pill.island::after,
+.island-theme-neon.notched .panel::after { padding-top: 0; }

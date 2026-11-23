@@ -79,6 +79,8 @@
 
   const mood = $derived(nook.waiting ? "waiting" : nook.working ? "working" : "idle");
   const floating = $derived(nook.settings?.placement === "floating");
+  // At the top of the screen the island is a notch: concave "shoulders" curve it into the screen's edge on both sides,
+  // as a phone's or a Mac's notch does. Floating, or as the round Nook with its chat chip, it stands free without them.
   const islandDisplay = $derived(nook.settings?.islandDisplay ?? "pill");
   const hoverOpen = $derived(nook.settings?.islandHoverOpen ?? false);
   const hideWhenIdle = $derived(nook.settings?.hideWhenIdle ?? false);
@@ -660,6 +662,8 @@
   const showTimerInPill = $derived(!showMediaInPill && focusTimer.active && islandDisplay !== "orb");
   const showAgentInPill = $derived(!showMediaInPill && !showTimerInPill && islandDisplay === "pill" && (agents.pending > 0 || activeAgents.length > 0));
   const showEventInPill = $derived(!showMediaInPill && !showTimerInPill && !showAgentInPill && !!nextEvent && islandDisplay !== "orb");
+  const notched = $derived(!floating && (expanded || (strip && agents.attention) || (islandDisplay !== "orb" && !chipVisible)));
+
   // What the closed pill is showing; a change slides the new content in instead of swapping it.
   const pillMode = $derived(
     greeting ? "greeting" : showMediaInPill ? "media" : showTimerInPill ? "timer" : showAgentInPill ? "agent" : showEventInPill ? "event" : "idle",
@@ -717,7 +721,11 @@
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && escape()} onblur={blurClose} onfocus={() => setTimeout(() => (barDraft.picking = false), 300)} />
 
-<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave}>
+<div class="bar island-theme-{islandTheme} neon-rim-{neonRim}" class:notched class:expanded class:floating class:hasChip={chipVisible} role="region" onmouseenter={enter} onmouseleave={leave}>
+  {#if notched}
+    <span class="shoulder left" aria-hidden="true"></span>
+    <span class="shoulder right" aria-hidden="true"></span>
+  {/if}
   {#if !expanded && strip && agents.attention}
     {@const card = agents.attention}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -957,7 +965,29 @@
 </div>
 
 <style>
-  .bar { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; }
+  .bar { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; box-sizing: border-box; }
+  /* The notch's shoulders: the window is the island plus one shoulder each side, and each shoulder is the island's
+     color with a quarter circle cut out of its lower outer corner, its rim drawn along the curve. */
+  .bar.notched { --sh: var(--island-shoulder); position: relative; padding: 0 var(--sh); }
+  .bar.notched.expanded { --sh: var(--island-shoulder-panel); }
+  .shoulder {
+    position: absolute;
+    top: 0;
+    width: var(--sh);
+    height: var(--sh);
+    pointer-events: none;
+    z-index: 1;
+    animation: shoulder-in 0.32s ease-out;
+  }
+  .shoulder.left {
+    left: 0;
+    background: radial-gradient(circle at 0 100%, transparent calc(var(--sh) - 1.5px), var(--island-edge) calc(var(--sh) - 1px), var(--island-edge) calc(var(--sh) - 0.5px), var(--notch) var(--sh));
+  }
+  .shoulder.right {
+    right: 0;
+    background: radial-gradient(circle at 100% 100%, transparent calc(var(--sh) - 1.5px), var(--island-edge) calc(var(--sh) - 1px), var(--island-edge) calc(var(--sh) - 0.5px), var(--notch) var(--sh));
+  }
+  @keyframes shoulder-in { from { opacity: 0; } }
   .bar.hasChip { flex-direction: column; align-items: center; gap: 4px; }
   .bar.hasChip .pill.round { width: 44px; height: 44px; flex: none; }
   /* The chat chip under the closed round Nook: who wrote, one click opens Nook. */
@@ -981,7 +1011,7 @@
     height: 100%;
     width: 100%;
     background: var(--notch);
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 var(--radius-island) var(--radius-island);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1257,7 +1287,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: drop 0.32s cubic-bezier(0.2, 1.2, 0.4, 1);
+    animation: drop 0.56s cubic-bezier(0.34, 1.32, 0.5, 1);
     transform-origin: top center;
     position: relative;
   }
@@ -1270,7 +1300,8 @@
   .grip.bottom-left { left: 0; cursor: nesw-resize; }
   .grip.bottom-right { right: 0; cursor: nwse-resize; }
   .floating .panel { border-radius: 22px; }
-  @keyframes drop { from { transform: scaleY(0.7); opacity: 0; } }
+  /* The panel grows out of the notch on a spring: a little wider and taller than its size, then settling (as Isle's). */
+  @keyframes drop { from { transform: scale(0.9, 0.55); opacity: 0; } }
   header { display: flex; align-items: center; gap: 6px; padding: 10px 10px 6px; min-width: 0; }
   nav {
     position: relative;
