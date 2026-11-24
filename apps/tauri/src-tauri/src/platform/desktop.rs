@@ -73,6 +73,11 @@ static CLICKS_PASS: AtomicBool = AtomicBool::new(false);
 /// Whether the bar shows its open panel, even without focus.
 static PANEL_OPEN: AtomicBool = AtomicBool::new(false);
 
+/// Whether the bar's panel is open right now.
+pub fn panel_open() -> bool {
+    PANEL_OPEN.load(Ordering::Relaxed)
+}
+
 fn set_clicks_pass(bar: &tauri::WebviewWindow, pass: bool) {
     if bar.set_ignore_cursor_events(pass).is_ok() {
         CLICKS_PASS.store(pass, Ordering::Relaxed);
@@ -295,17 +300,50 @@ pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool
     };
     let (x, y) = match (settings.placement.as_str(), settings.float_x, settings.float_y) {
         ("floating", Some(fx), Some(fy)) => (left + width / 2.0 + fx - w / 2.0, top + fy),
-        _ => (left + (width - w) / 2.0, top),
+        // Docked: on the top edge, slid sideways as far as the user dragged it, but never off the screen.
+        _ => {
+            let centered = left + (width - w) / 2.0;
+            ((centered + settings.dock_x.unwrap_or(0.0)).clamp(left, (left + width - w).max(left)), top)
+        }
     };
     // The closed bar is a fixed round Nook: stretching it would only blow the circle up, so its size is pinned by min
     // and max. (Toggling `resizable` instead changes the window frame, which throws the first open off.)
     let _ = window.set_max_size(None::<LogicalSize<f64>>);
     let _ = window.set_min_size(Some(if expanded { LogicalSize::new(EXPANDED_MIN.0, EXPANDED_MIN.1) } else { LogicalSize::new(w, h) }));
-    let _ = window.set_size(LogicalSize::new(w, h));
-    let _ = window.set_position(LogicalPosition::new(x, y));
+    set_bounds(&window, x, y, w, h, scale);
     if !expanded {
         let _ = window.set_max_size(Some(LogicalSize::new(w, h)));
     }
+}
+
+/// Moves and resizes the bar in one step. Two separate calls (size, then position) made Windows draw the window once
+/// at the new size on the old spot, so the island visibly jumped sideways every time it opened or closed on hover.
+fn set_bounds(window: &tauri::WebviewWindow, x: f64, y: f64, w: f64, h: f64, scale: f64) {
+    #[cfg(windows)]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+        if let Ok(handle) = window.hwnd() {
+            let hwnd = HWND(handle.0 as *mut _);
+            let moved = unsafe {
+                SetWindowPos(
+                    hwnd,
+                    None,
+                    (x * scale).round() as i32,
+                    (y * scale).round() as i32,
+                    (w * scale).round() as i32,
+                    (h * scale).round() as i32,
+                    SWP_NOZORDER | SWP_NOACTIVATE,
+                )
+            };
+            if moved.is_ok() {
+                return;
+            }
+        }
+    }
+    let _ = scale;
+    let _ = window.set_size(LogicalSize::new(w, h));
+    let _ = window.set_position(LogicalPosition::new(x, y));
 }
 
 /// `--window` opent het hoofdvenster, `--settings` meteen de instellingen.

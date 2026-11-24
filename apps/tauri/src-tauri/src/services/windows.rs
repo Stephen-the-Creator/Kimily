@@ -56,7 +56,7 @@ pub fn place_aside(app: &AppHandle, large: bool) {
     let bar = crate::platform::desktop::COLLAPSED;
     let (x, y) = match (settings.placement.as_str(), settings.float_x, settings.float_y) {
         ("floating", Some(fx), Some(fy)) => (left + width / 2.0 + fx + bar.0 / 2.0 + 10.0, top + fy),
-        _ => (left + width / 2.0 + bar.0 / 2.0 + 10.0, top + 2.0),
+        _ => (left + width / 2.0 + settings.dock_x.unwrap_or(0.0) + bar.0 / 2.0 + 10.0, top + 2.0),
     };
     let _ = window.set_size(LogicalSize::new(w, h));
     let _ = window.set_position(LogicalPosition::new(x.min(left + width - w - 8.0), y));

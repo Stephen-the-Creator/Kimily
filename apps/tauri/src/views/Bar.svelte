@@ -318,7 +318,7 @@
     pinnedOpen = false;
     locked = false;
     play("close", nook.settings?.sounds ?? true);
-    await api.barExpand(false, false, false, wantWide);
+    await sizeClosed();
     services.asideShow();
   }
 
@@ -547,7 +547,7 @@
     el.style.setProperty("--tilt-y", "0deg");
   }
 
-  // Floating: the user drags the bar anywhere. On macOS `startDragging` returns when the mouse is let go, but on Windows
+  // The user drags the bar: floating anywhere, docked along the top edge. On macOS `startDragging` returns when the mouse is let go, but on Windows
   // it returns at once and the move happens afterwards, so saving right after it stored the old spot and the bar jumped
   // back on the next hover. The spot is saved once the window has stopped moving after a drag instead.
   let dragUntil = 0;
@@ -558,7 +558,7 @@
   const DRAG_THRESHOLD = 4;
   let pressAt: { x: number; y: number } | null = null;
   function drag(e: MouseEvent) {
-    if (!floating || e.button !== 0) return;
+    if (e.button !== 0) return;
     if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [contenteditable]")) return;
     pressAt = { x: e.screenX, y: e.screenY };
     window.addEventListener("mousemove", dragMove);
@@ -577,8 +577,8 @@
     window.removeEventListener("mousemove", dragMove);
     window.removeEventListener("mouseup", dragEnd);
   }
+  // Docked, the same drag slides the island along the top edge; letting go snaps it back onto the edge.
   $effect(() => {
-    if (!floating) return;
     const off = getCurrentWindow().onMoved(() => {
       // Only moves that follow a drag count; moves Kimily makes itself (opening, closing) don't.
       if (Date.now() > dragUntil) return;
@@ -631,7 +631,7 @@
       openedForNotice = false;
       if (strip) {
         strip = false;
-        if (!expanded) api.barExpand(false);
+        if (!expanded) void sizeClosed();
       }
       if (expanded && !inside) leave();
     };
@@ -757,18 +757,23 @@
     hideWhenIdle && !expanded && !strip && !chipVisible && !inside && !dropping && !showMediaInPill && !showTimerInPill && !showAgentInPill && !showEventInPill && !nook.working && !nook.waiting && !barDraft.files,
   );
   // Keep the closed Dynamic Island window width in sync with whether media or active agents are shown.
-  let wideSized = false;
+  // Only a real change resizes it: resizing on every closing as well (closing already sizes the window) made the
+  // island jump a second time right after it shut.
+  let wideSized: boolean | null = null;
+  let modeSized: string | null = null;
   $effect(() => {
     const wide = wantWide;
     const isClosed = !expanded && !strip && !chipVisible;
     const mode = islandDisplay;
     untrack(() => {
-      if (isClosed && (wide !== wideSized || mode !== "orb")) {
-        wideSized = wide;
-        api.barExpand(false, false, false, wide);
-      }
+      if (isClosed && (wide !== wideSized || mode !== modeSized)) void sizeClosed();
     });
   });
+  function sizeClosed() {
+    wideSized = wantWide;
+    modeSized = islandDisplay;
+    return api.barExpand(false, false, false, wantWide);
+  }
   // The window makes room under the round Nook while the chip shows, and goes back to the round size when it leaves.
   let chipSized = false;
   $effect(() => {
@@ -779,7 +784,7 @@
         api.barExpand(false, false, true);
       } else if (!want && chipSized) {
         chipSized = false;
-        if (!expanded && !strip) api.barExpand(false, false, false, wantWide);
+        if (!expanded && !strip) void sizeClosed();
       }
     });
   });

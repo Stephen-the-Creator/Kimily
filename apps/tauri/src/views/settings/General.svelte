@@ -107,6 +107,12 @@
         <option value="floating">{tr("Zwevend op het scherm", "Floating on the screen")}</option>
       </select>
     </label>
+    {#if s.placement === "top"}
+      <div class="row">
+        <span>{tr("Opzij geschoven", "Slid sideways")}<br /><small class="faint">{tr("Sleep het eiland langs de bovenrand, bijvoorbeeld weg van je browsertabbladen.", "Drag the island along the top edge, for example away from your browser tabs.")}</small></span>
+        <button disabled={!s.dockX} onclick={() => nook.saveSettings({ dockX: null })}>{tr("Terug naar het midden", "Back to the middle")}</button>
+      </div>
+    {/if}
     <label class="row"><span>{tr("Starten als ik inlog op de computer", "Open at login")}</span><input type="checkbox" role="switch" checked={launchAtLogin} onchange={(e) => setLaunchAtLogin(e.currentTarget.checked)} /></label>
     {#if nook.info.capabilities.os === "windows"}
       <div class="row">

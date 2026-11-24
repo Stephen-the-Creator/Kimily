@@ -34,6 +34,7 @@ export interface Settings {
   placement: "top" | "floating";
   floatX: number | null;
   floatY: number | null;
+  dockX: number | null;
   screenChoice: string;
   accentHex: number;
   hideWhenIdle: boolean;

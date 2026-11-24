@@ -69,6 +69,9 @@ pub struct Settings {
     pub placement: String,
     pub float_x: Option<f64>,
     pub float_y: Option<f64>,
+    /// Docked at the top: how far the island was slid sideways from the middle of the screen (logical px), so it can
+    /// sit clear of browser tabs. None (or 0) is the middle.
+    pub dock_x: Option<f64>,
     pub screen_choice: String,
     pub accent_hex: u32,
     pub hide_when_idle: bool,
@@ -201,6 +204,7 @@ impl Default for Settings {
             placement: "top".into(),
             float_x: None,
             float_y: None,
+            dock_x: None,
             screen_choice: "auto".into(),
             accent_hex: 0xF4_F3_F7,
             hide_when_idle: false,

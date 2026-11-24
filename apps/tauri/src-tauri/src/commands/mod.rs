@@ -80,6 +80,7 @@ pub fn save_settings(app: AppHandle, state: State<'_, AppState>, settings: Setti
             crate::platform::desktop::register_shortcuts(&app);
         }
         if before.placement != saved.placement
+            || before.dock_x != saved.dock_x
             || before.panel_large != saved.panel_large
             || before.panel_size != saved.panel_size
             || before.island_display != saved.island_display
@@ -397,7 +398,8 @@ pub fn take_chat_terminal(state: State<'_, AppState>) -> Option<crate::state::Ch
     state.pending_chat_terminal.lock().unwrap_or_else(|e| e.into_inner()).take()
 }
 
-/// Zwevende stand: onthoud waar de gebruiker de balk neerzette, als afstand tot het midden van het scherm.
+/// Remembers where the user dragged the bar, as a distance from the middle of the screen. Floating keeps both
+/// directions; docked keeps only the sideways slide and snaps the island back onto the top edge.
 #[tauri::command]
 pub fn bar_moved(app: AppHandle, state: State<'_, AppState>) {
     let Some(window) = app.get_webview_window("bar") else { return };
@@ -407,10 +409,22 @@ pub fn bar_moved(app: AppHandle, state: State<'_, AppState>) {
     let center = (area.position.x as f64 + area.size.width as f64 / 2.0) / scale;
     let x = pos.x as f64 / scale + size.width as f64 / scale / 2.0 - center;
     let y = (pos.y - area.position.y) as f64 / scale;
-    state.update_settings(|s| {
-        s.float_x = Some(x);
-        s.float_y = Some(y.max(0.0));
+    let floating = state.settings().placement == "floating";
+    let saved = state.update_settings(|s| {
+        if floating {
+            s.float_x = Some(x);
+            s.float_y = Some(y.max(0.0));
+        } else {
+            // A slide of a few pixels is a slip of the hand: it stays in the middle.
+            s.dock_x = (x.abs() >= 12.0).then_some(x);
+        }
     });
+    if !floating {
+        crate::platform::desktop::place_bar(&app, crate::platform::desktop::panel_open());
+    }
+    // Every window keeps its own copy of the settings and saves it whole: without this, the next change in Settings
+    // would put the old spot back.
+    let _ = app.emit("settings-changed", &saved);
 }
 
 /// Maak (of herstel) de snelkoppeling "Nook" in het Startmenu, zodat die rechtstreeks naar het draaiende Nook.exe wijst.
