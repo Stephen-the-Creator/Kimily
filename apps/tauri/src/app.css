@@ -181,9 +181,11 @@
 }
 
 /* Density (Settings › Appearance › Text and layout, `NookDensity` on the Mac): the whole window a step smaller or
-   larger. The Mac scales type by 0.93 or 1.07; zoom scales the spacing along with it. */
-:root[data-density="compact"] body:not(.bar) #app { zoom: 0.93; height: calc(100% / 0.93); }
-:root[data-density="spacious"] body:not(.bar) #app { zoom: 1.07; height: calc(100% / 1.07); }
+   larger. The Mac scales type by 0.93 or 1.07; zoom scales the spacing along with it. The window keeps filling the
+   view through `height: 100%` all the way down: Chromium no longer scales a percentage height by zoom, so dividing it
+   by the zoom (or sizing with 100dvh) made the page taller or shorter than the window and gave it a second scrollbar. */
+:root[data-density="compact"] body:not(.bar) #app { zoom: 0.93; }
+:root[data-density="spacious"] body:not(.bar) #app { zoom: 1.07; }
 
 * { box-sizing: border-box; }
 

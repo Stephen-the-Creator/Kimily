@@ -390,7 +390,7 @@
 
 <style>
   /* The main window as on the Mac: one sidebar (search, tab bar, the tab's list, footer) beside the content. */
-  .main { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100dvh; overflow: hidden; background: var(--canvas); }
+  .main { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100%; overflow: hidden; background: var(--canvas); }
   .rail { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; padding: 0 8px 8px; }
   .head { display: flex; align-items: center; gap: 2px; height: 52px; padding: 0 4px; flex: none; }
   .talk { display: contents; }
@@ -451,7 +451,7 @@
   @keyframes fade { from { opacity: 0; } }
   @keyframes slide { from { transform: translateX(-12px); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .main.overlay::after, .main.overlay .side-list { animation: none; } }
-  .phone-shell { height: 100vh; height: 100dvh; padding: var(--safe-top) var(--safe-right) 0 var(--safe-left); box-sizing: border-box; background: var(--canvas); }
+  .phone-shell { height: 100%; padding: var(--safe-top) var(--safe-right) 0 var(--safe-left); box-sizing: border-box; background: var(--canvas); }
   :global(html.keyboard-open) .phone-shell { padding-bottom: var(--keyboard); }
   .main.mobile { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto; padding: var(--safe-top) var(--safe-right) 0 var(--safe-left); }
   .main.mobile .rail { flex-direction: row; justify-content: space-around; align-items: center; padding: 4px 8px calc(4px + var(--safe-bottom)); order: 2; gap: 0; border-top: 1px solid var(--border); border-right: 0; }
