@@ -10,6 +10,6 @@ describe("maintenance", () => {
   });
 
   it("links to the repository over https", () => {
-    for (const url of Object.values(LINKS)) expect(url.startsWith("https://github.com/IAMichan/nook")).toBe(true);
+    for (const url of Object.values(LINKS)) expect(url.startsWith("https://github.com/Stephen-the-Creator/Kimily")).toBe(true);
   });
 });

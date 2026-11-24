@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"></head>
+<body><script>
+const SETTINGS = {"appLanguage": "en", "language": "en", "provider": "ollama", "providerModels": {}, "autoWatch": false, "autoRunSafe": false, "nookAccess": null, "placement": "top", "floatX": null, "floatY": null, "screenChoice": "auto", "accentHex": 16053239, "hideWhenIdle": false, "panelLarge": false, "panelSize": "medium", "islandDisplay": "pill", "islandHoverOpen": false, "agentNotice": "detailed", "sounds": true, "speakAnswers": false, "wakeWord": false, "webSearch": true, "liveScreen": false, "screenWithEveryQuestion": false, "localOnlySources": [], "screenBrain": "", "screenBrainRelays": false, "evidenceFirst": false, "checkAnswers": true, "selectionAsk": true, "useMemory": true, "learnFromChats": true, "onboardingDone": false, "demoData": false, "shortcuts": {"chat": "Alt+CommandOrControl+Space", "lookAlong": "Alt+CommandOrControl+N", "talk": "Alt+Space", "window": "Alt+CommandOrControl+W"}, "watchedPullRequests": [], "quietWhileSharing": "hideFromShare", "quietInMeetings": "quiet", "quietUseCalendar": true, "hideFromCaptures": false, "showInScreenshots": false, "energyMode": "automatic", "autocomplete": {"enabled": false, "enabledByDefault": true, "maxWords": 8, "midLine": true, "eagerness": 0.5, "trailingSpace": false, "punctuationWithWord": false, "escape": "dismiss", "delayMilliseconds": 40, "engine": "local", "localServer": "auto", "model": "", "windowContext": true, "memoryContext": true, "clipboardContext": false, "instructions": "", "apps": {}, "sites": {}, "emoji": true, "skinTone": 0, "emojiGender": 0, "emoticons": true, "matchSpelling": true, "acceptWord": "Tab", "acceptAll": "Shift+Tab"}, "userName": "", "homeEssentials": null, "inboxDismissed": {}, "inboxSnoozed": {}, "focusMode": "all", "inboxSeenAt": null, "startLocalBrain": true, "trayHintShown": false, "mainWindow": null, "theme": "neon", "density": "comfortable", "answerStyle": "standard", "instructions": ""};
+SETTINGS.doNotDisturb = true; try { localStorage.setItem("focus.pomodoro", JSON.stringify({on:true,work:25,rest:5,longRest:15})); } catch {}
+const caps = {os:"windows",desktop:true,screenReading:true,globalShortcuts:true,tray:true,terminals:true,localAgents:true,media:true,screenPart:true,microphone:true,localSpeech:true,speechOutput:true,wakeWord:true,flow:true,systemAudio:true,openApps:true,volume:true,clipboard:true,notifications:true,files:true};
+const INFO = {version:"0.1.2",capabilities:caps,brainLabel:"Ollama · qwen3",brainLocal:true,memoryGb:16,brainReady:true};
+const now = Date.now();
+const LOOPS = [
+ {id:"1",title:"Angebot Kernbohrung schreiben",due:new Date(now-3600e3).toISOString(),created:new Date(now-86400e3).toISOString()},
+ {id:"2",title:"Material bei Würth bestellen",due:new Date(now+5*3600e3).toISOString(),created:new Date(now-7200e3).toISOString()},
+ {id:"3",title:"Rechnung März prüfen",due:null,created:new Date(now-600e3).toISOString()}];
+window.__TAURI_INTERNALS__ = {
+  metadata:{currentWindow:{label: location.hash==="#bar"?"bar":"main"},currentWebview:{label: location.hash==="#bar"?"bar":"main"}},
+  transformCallback:()=>Math.floor(Math.random()*1e9),
+  unregisterCallback:()=>{},
+  convertFileSrc:(p)=>p,
+  invoke: async (cmd, args) => { (window.__calls ||= []).push(cmd);
+    if (cmd==="get_settings") return structuredClone(SETTINGS);
+    if (cmd==="save_settings") { Object.assign(SETTINGS, args?.settings||{}); return structuredClone(SETTINGS); }
+    if (cmd==="app_info") return INFO;
+    if (cmd==="open_loops") return LOOPS;
+    if (cmd.startsWith("plugin:event|listen")) return Math.floor(Math.random()*1e9);
+    if (cmd==="island_weather") return {temp:7,code:3,label:"Bewölkt"};
+    if (/list|history|sessions|loops|conversations|accounts|items|threads|events|sources|chats|agents|pulls|memories|agenda|upcoming|clips|recent/.test(cmd)) return [];
+    return null;
+  },
+};
+window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: ()=>{} };
+try { localStorage.setItem("island.theme", new URLSearchParams(location.search).get("t") || "neon"); localStorage.setItem("nook.accessory","none"); } catch {}
+</script><div id="app"></div><script type="module" src="./main.ts"></script></body></html>

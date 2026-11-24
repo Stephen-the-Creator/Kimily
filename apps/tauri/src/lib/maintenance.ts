@@ -21,7 +21,7 @@ export const maintenance = {
   resetSettings: () => invoke<Settings>("reset_settings"),
 };
 
-export const REPOSITORY = "https://github.com/IAMichan/nook";
+export const REPOSITORY = "https://github.com/Stephen-the-Creator/Kimily";
 export const LINKS = {
   source: REPOSITORY,
   releases: `${REPOSITORY}/releases`,

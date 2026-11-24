@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The GitHub repository releases come from when the build names none.
-pub const DEFAULT_REPOSITORY: &str = "IAMichan/nook";
+pub const DEFAULT_REPOSITORY: &str = "Stephen-the-Creator/Kimily";
 /// The panel and the receipt keep this many changes.
 pub const CHANGE_LIMIT: usize = 60;
 /// When a running Nook looks for an update, as on the Mac (docs/UPDATES.md, "Release builds"): 20 seconds after launch,
