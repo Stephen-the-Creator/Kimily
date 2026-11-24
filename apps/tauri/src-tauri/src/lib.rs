@@ -148,6 +148,7 @@ pub fn run() {
             commands::bar_expand,
             commands::show_main,
             commands::bar_moved,
+            commands::bar_slide,
             commands::take_route,
             commands::take_chat_terminal,
             commands::repair_start_menu_shortcut,

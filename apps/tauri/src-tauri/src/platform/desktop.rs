@@ -203,11 +203,43 @@ fn create_bar(app: &AppHandle) -> tauri::Result<()> {
         .min_inner_size(COLLAPSED.0, COLLAPSED.1)
         .always_on_top(true)
         .skip_taskbar(true)
+        // Dragged against the top edge, Windows Snap would maximize the island to the whole screen.
+        .maximizable(false)
         .visible(false)
         .build()?;
+    // Should Snap still maximize it (a floating island dragged to the top), it goes straight back to its own size.
+    let handle = app.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::Resized(_) = event {
+            if let Some(bar) = handle.get_webview_window(BAR) {
+                if bar.is_maximized().unwrap_or(false) {
+                    let _ = bar.unmaximize();
+                    place_bar(&handle, panel_open());
+                }
+            }
+        }
+    });
     place_bar(app, false);
     window.show()?;
     Ok(())
+}
+
+/// While the docked island is being slid along the top edge: where it is now, before it is saved on release.
+static DOCK_SLIDE: Mutex<Option<f64>> = Mutex::new(None);
+
+/// Slides the docked island sideways to `offset` (logical px from the middle of the screen). Kimily moves the window
+/// itself instead of handing the drag to Windows, which would let it leave the edge and snap it to full screen.
+/// `done` saves the spot; a slide of a few pixels is a slip of the hand and leaves it in the middle.
+pub fn slide_docked_bar(app: &AppHandle, offset: f64, done: bool) -> Option<nook_core::settings::Settings> {
+    if done {
+        *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        let saved = app.state::<AppState>().update_settings(|s| s.dock_x = (offset.abs() >= 12.0).then_some(offset));
+        place_bar(app, panel_open());
+        return Some(saved);
+    }
+    *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = Some(offset);
+    place_bar(app, panel_open());
+    None
 }
 
 /// Bovenaan in het midden van het gekozen scherm, of op de plek waar de gebruiker hem neerzette (zwevend).
@@ -303,7 +335,8 @@ pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool
         // Docked: on the top edge, slid sideways as far as the user dragged it, but never off the screen.
         _ => {
             let centered = left + (width - w) / 2.0;
-            ((centered + settings.dock_x.unwrap_or(0.0)).clamp(left, (left + width - w).max(left)), top)
+            let offset = (*DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner())).or(settings.dock_x).unwrap_or(0.0);
+            ((centered + offset).clamp(left, (left + width - w).max(left)), top)
         }
     };
     // The closed bar is a fixed round Nook: stretching it would only blow the circle up, so its size is pinned by min

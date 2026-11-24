@@ -47,6 +47,7 @@ export const api = {
 
   barExpand: (expanded: boolean, notice = false, chip = false, wide = false) => invoke<void>("bar_expand", { expanded, notice, chip, wide }),
   barMoved: () => invoke<void>("bar_moved"),
+  barSlide: (offset: number, done: boolean) => invoke<void>("bar_slide", { offset, done }),
   showMain: (route: string) => invoke<void>("show_main", { route }),
   takeRoute: () => invoke<string | null>("take_route"),
   takeChatTerminal: () => invoke<ChatTerminal | null>("take_chat_terminal"),

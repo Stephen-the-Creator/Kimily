@@ -547,7 +547,7 @@
     el.style.setProperty("--tilt-y", "0deg");
   }
 
-  // The user drags the bar: floating anywhere, docked along the top edge. On macOS `startDragging` returns when the mouse is let go, but on Windows
+  // The user drags the bar: floating anywhere (below), docked along the top edge (`slide`). On macOS `startDragging` returns when the mouse is let go, but on Windows
   // it returns at once and the move happens afterwards, so saving right after it stored the old spot and the bar jumped
   // back on the next hover. The spot is saved once the window has stopped moving after a drag instead.
   let dragUntil = 0;
@@ -557,6 +557,9 @@
   // on the pill itself do nothing. Buttons and fields never start a drag.
   const DRAG_THRESHOLD = 4;
   let pressAt: { x: number; y: number } | null = null;
+  // Docked, Kimily slides the window along the top edge itself: handed to Windows, the drag could pull the island off
+  // the edge, and Snap turned it into a full-screen window at the top.
+  let slide: { from: number; offset: number; frame: number } | null = null;
   function drag(e: MouseEvent) {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [contenteditable]")) return;
@@ -566,19 +569,52 @@
   }
   function dragMove(e: MouseEvent) {
     if (!pressAt) return;
-    if ((e.buttons & 1) === 0) return dragEnd();
+    if ((e.buttons & 1) === 0) return dragEnd(e);
+    if (slide) {
+      const offset = slide.from + (e.screenX - pressAt.x);
+      if (!slide.frame) {
+        slide.frame = requestAnimationFrame(() => {
+          if (!slide) return;
+          slide.frame = 0;
+          void api.barSlide(slide.offset, false);
+        });
+      }
+      slide.offset = offset;
+      return;
+    }
     if (Math.hypot(e.screenX - pressAt.x, e.screenY - pressAt.y) < DRAG_THRESHOLD) return;
-    dragEnd();
+    if (!floating) {
+      const from = nook.settings?.dockX ?? 0;
+      slide = { from, offset: from, frame: 0 };
+      return dragMove(e);
+    }
+    stopListening();
     dragUntil = Date.now() + 1500;
     void getCurrentWindow().startDragging();
   }
-  function dragEnd() {
+  function dragEnd(e?: MouseEvent) {
+    if (slide) {
+      cancelAnimationFrame(slide.frame);
+      const offset = e && pressAt ? slide.from + (e.screenX - pressAt.x) : slide.offset;
+      slide = null;
+      // The click that ends a slide must not also open the island (or press whatever it was let go over).
+      const swallow = (c: MouseEvent) => {
+        c.stopPropagation();
+        c.preventDefault();
+      };
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 300);
+      void api.barSlide(offset, true);
+    }
+    stopListening();
+  }
+  function stopListening() {
     pressAt = null;
     window.removeEventListener("mousemove", dragMove);
     window.removeEventListener("mouseup", dragEnd);
   }
-  // Docked, the same drag slides the island along the top edge; letting go snaps it back onto the edge.
   $effect(() => {
+    if (!floating) return;
     const off = getCurrentWindow().onMoved(() => {
       // Only moves that follow a drag count; moves Kimily makes itself (opening, closing) don't.
       if (Date.now() > dragUntil) return;
