@@ -93,9 +93,33 @@
   // The highlight behind the open tab glides to the tab you pick instead of jumping, and an off-screen tab scrolls in.
   let navEl = $state<HTMLElement | undefined>();
   let glider = $state({ x: 0, w: 0, ready: false });
+  // When the tabs do not fit, they first move closer together; whatever still sticks out fades at that edge, so a
+  // tab is never sliced off mid-word ("imily") without a hint that the row scrolls.
+  let tabsTight = $state(false);
+  let tabsFade = $state({ left: false, right: false });
+  function measureTabs() {
+    const el = navEl;
+    if (!el) return;
+    const over = el.scrollWidth - el.clientWidth;
+    tabsFade = { left: el.scrollLeft > 1, right: el.scrollLeft < over - 1 };
+  }
+  $effect(() => {
+    const el = navEl;
+    if (!el) return;
+    const fit = () => {
+      tabsTight = false;
+      requestAnimationFrame(() => {
+        tabsTight = el.scrollWidth > el.clientWidth + 1;
+        requestAnimationFrame(measureTabs);
+      });
+    };
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   $effect(() => {
     // Everything that moves or resizes a tab label.
-    void [shown, hiddenTabs.length, openTaskCount, focusTimer.formatted, focusTimer.running, fileTray.count, !!playing, appLanguage()];
+    void [shown, tabsTight, hiddenTabs.length, openTaskCount, focusTimer.formatted, focusTimer.running, fileTray.count, !!playing, appLanguage()];
     const el = navEl;
     if (!el) return;
     const raf = requestAnimationFrame(() => {
@@ -106,6 +130,7 @@
       }
       glider = { x: on.offsetLeft, w: on.offsetWidth, ready: true };
       on.scrollIntoView({ block: "nearest", inline: "nearest", behavior: motion(1) ? "smooth" : "auto" });
+      measureTabs();
     });
     return () => cancelAnimationFrame(raf);
   });
@@ -1014,7 +1039,7 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <header onmousedown={drag}>
         <Orb size={20} {mood} {ring} movable alive onpiece={(id) => { select("nook"); nook.select(id); }} />
-        <nav bind:this={navEl} class:glide={glider.ready} onwheel={wheelTabs}>
+        <nav bind:this={navEl} class:glide={glider.ready} class:tight={tabsTight} class:fade-left={tabsFade.left} class:fade-right={tabsFade.right} onwheel={wheelTabs} onscroll={measureTabs}>
           <span class="tab-glider" aria-hidden="true" style="transform: translateX({glider.x}px); width: {glider.w}px"></span>
           {#if tabVisible("home")}<button class:on={shown === "home"} onclick={() => select("home")}>Home</button>{/if}
           <button class:on={shown === "nook"} onclick={() => select("nook")}>Kimily {#if nook.waiting}<span class="dot waiting"></span>{/if}</button>
@@ -1446,8 +1471,15 @@
     gap: 2px;
     overflow-x: auto;
     scrollbar-width: none;
+    /* A tab scrolled into view keeps a little room from the edge, so its first letter is never under the fade. */
+    scroll-padding-inline: 20px;
   }
   nav::-webkit-scrollbar { display: none; }
+  nav.tight { gap: 0; }
+  nav.tight button { padding-inline: 7px; }
+  nav.fade-left { mask-image: linear-gradient(to right, transparent, black 20px); }
+  nav.fade-right { mask-image: linear-gradient(to left, transparent, black 20px); }
+  nav.fade-left.fade-right { mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent); }
   nav button {
     position: relative;
     z-index: 1;
