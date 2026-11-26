@@ -12,7 +12,9 @@ Everything that wants your attention — AI chat, focus timer, tasks, notes, fil
 ![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-<!-- Add a short GIF of the island opening here, e.g. docs/media/kimily-demo.gif (800px wide, < 5 MB) -->
+<br />
+
+<img src="docs/media/island-chat.jpg" alt="The Kimily island opened on a chat: a finished task, the sources it used and the chat history beside it" width="720" />
 
 </div>
 
@@ -28,13 +30,35 @@ It runs on **local AI models by default** (Ollama or LM Studio), so your chats a
 |---|---|
 | 🏝️ **The island** | A pill that shows what matters right now: clock and weather, the song that's playing (with controls), your focus timer, a running agent or your next meeting. Click it and it opens on exactly that. |
 | 🤖 **AI chat** | Ask anything from the island. Works with local models (Ollama, LM Studio) and, if you want, cloud models. |
-| ⏱️ **Focus timer** | Pomodoro presets (5 / 15 / 25 / 45 min) or your own `MM:SS`, an optional goal, and a progress bar right in the closed pill. |
+| ⏱️ **Focus timer** | Presets (5 / 15 / 25 / 45 min) or your own `MM:SS`, Pomodoro rounds with short and long breaks, an optional goal, and a progress bar right in the closed pill. |
 | ✅ **Tasks** | Add a task with a due date in one line; overdue tasks are highlighted, finished ones fold away. |
 | 📝 **Notes & clipboard** | An auto-saving scratchpad, pinned snippets you copy with one click, and a clipboard history that **skips passwords, API keys and card numbers** — with a pause button. |
 | 📂 **File shelf** | Drop files on the island to keep them handy, or send them to Kimily to summarize. |
 | 🧑‍💻 **Coding agents** | See what Claude Code, Codex & co. are doing and answer their questions without switching windows. |
-| 🎨 **Make it yours** | An animated avatar with moods and accessories, 4 island themes (*Obsidian*, *Smoked Glass*, *Tinted*, *Light*), 4 panel sizes and tabs you can switch on or off. |
+| 🎨 **Make it yours** | An animated avatar with moods and accessories, 5 island themes (*Obsidian*, *Smoked Glass*, *Tinted*, *Light*, *Neon* with 7 glowing rim colors), 4 panel sizes and tabs you can switch on or off. Dock it at the top (and slide it clear of your browser tabs) or let it float anywhere. |
 | 🌍 **5 languages** | English, Deutsch, Nederlands, Français, Español. |
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/island-focus.jpg" alt="Focus timer with presets, a custom countdown and the Pomodoro switch" /><br /><sub><b>Focus</b>: presets, your own countdown and Pomodoro rounds with breaks.</sub></td>
+    <td width="50%"><img src="docs/media/island-tasks.jpg" alt="Tasks tab with a one-line task field" /><br /><sub><b>Tasks</b>: one line per task, or just say it in the chat.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/island-notes.jpg" alt="Notes tab with the scratchpad, clipboard history and pinned snippets" /><br /><sub><b>Notes</b>: scratchpad, clipboard history and pinned snippets.</sub></td>
+    <td><img src="docs/media/island-shelf.jpg" alt="File shelf with a drop zone" /><br /><sub><b>Shelf</b>: drop files to keep them handy or let Kimily summarize them.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/island-agents.jpg" alt="Agents tab: start a coding agent session in a folder" /><br /><sub><b>Agents</b>: start Claude Code, Codex, Gemini CLI or Antigravity in a folder.</sub></td>
+    <td><img src="docs/media/island-workspace.jpg" alt="Workspace usage: tokens per coding agent account" /><br /><sub><b>Workspace</b>: terminals, browser, worktrees and token usage per agent.</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/media/settings.jpg" alt="The Kimily main window on Settings, Overview, with the island docked at the top of the screen" width="820" /><br />
+  <sub><b>Settings</b>: one window for everything, with the island docked above it.</sub>
+</p>
 
 ### Keyboard shortcuts
 
