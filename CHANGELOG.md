@@ -1,14 +1,67 @@
 # Changelog
 
-Notable changes to Nook, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and versions follow [Semantic Versioning](https://semver.org) with `-beta.N` pre-releases.
+Notable changes to Kimily, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Each [GitHub release](https://github.com/Stephen-the-Creator/Kimily/releases) shows the section for its version: when
+you change something a user notices, add a line under the next version before releasing it.
 
-Every [GitHub release](https://github.com/IAMichan/nook/releases) also lists each merged pull request, grouped by label
-(see `.github/release.yml`). This file is the short, human-written summary: when your pull request changes something a
-user or contributor notices, add a line under **Unreleased**. When a release is published, the release workflow moves
-the entries it shipped under its version (`scripts/changelog-release.py`); a stable release gathers its betas.
+## [0.1.6] - 2026-11-27
 
-## Unreleased
+### Added
+
+- **Kimily is a cat now.** A soft 3D cat ([Open Bot Avatar](https://github.com/DominikScholz/open-bot-avatar), MIT)
+  in Kimily's own color, whose eyes follow your pointer. It shows what is going on: it works while a coding agent
+  runs, a jumping **!** when a session needs your answer, a little celebration when something is done, dots while
+  you speak, sleepy eyes when nothing happens, and happy eyes when you pet it.
+- **Settings › Appearance › Avatar**: choose the cat or the classic orb (which keeps its accessories). Where Kimily is
+  drawn large, the cat can be **smooth, fluffy or glass**; in the island it stays smooth.
+- **Two screens**: slide the docked island onto your other monitor. It remembers the screen and the spot, and comes
+  back there after a restart.
+
+### Fixed
+
+- Choosing Fluffy or Glass now changes the cat in the Settings window right away. Where the graphics driver has WebGL2
+  turned off, Settings says so instead of silently staying smooth.
+
+## [0.1.5] - 2026-11-26
+
+### Changed
+
+- The README shows Kimily: a hero shot of the island, a gallery of its tabs and the Settings window.
+
+### Fixed
+
+- The island's tab row no longer cuts off the first tab ("imily"): the tabs move closer together, and whatever still
+  does not fit fades out softly at the edge.
+
+## [0.1.4] - 2026-11-24
+
+### Added
+
+- **Slide the docked island** along the top of the screen, for example away from your browser tabs. Settings ›
+  General › **Back to the middle** puts it back.
+
+### Fixed
+
+- **Check for updates** (Settings › Maintenance) and the other help links now open Kimily's own GitHub pages.
+- The island no longer jumps sideways when it opens or closes on hover.
+- Dragging the docked island against the top edge no longer makes Windows turn it into a full-screen window.
+- Settings showed two scroll bars with the Compact or Spacious density, and Spacious cut off the bottom of the window.
+- A floating island could jump back to an old spot after a change in Settings.
+
+## [0.1.3] - 2026-11-21
+
+### Added
+
+- The Neon island theme with seven glowing rim colors, Pomodoro rounds in the focus timer, Do Not Disturb, a hover
+  delay, and the island drawn as one smooth notch outline. Nook is renamed Kimily throughout.
+
+---
+
+## Nook history
+
+Kimily is a fork of [Nook](https://github.com/IAMichan/nook). The entries below are Nook's own, from before the fork.
+
+### Nook: Unreleased
 
 ### Added
 
@@ -17,7 +70,7 @@ the entries it shipped under its version (`scripts/changelog-release.py`); a sta
   markup and text are on your clipboard, ready to paste in an agent's prompt. Shift-click takes several. In a PDF the
   click takes the spot and copies a picture of it with the spot marked.
 
-## [0.1.1] - 2026-11-18
+### Nook [0.1.1] - 2026-11-18
 
 ### Added
 
@@ -405,7 +458,7 @@ the entries it shipped under its version (`scripts/changelog-release.py`); a sta
 - "Post this on LinkedIn" and other requests to post on a site that don't start with a known verb are taken over
   again instead of being answered with text.
 
-## [0.1.0-beta.1] - 2026-10-23
+### Nook [0.1.0-beta.1] - 2026-10-23
 
 First public beta of the macOS app, published from `.github/workflows/release.yml`.
 

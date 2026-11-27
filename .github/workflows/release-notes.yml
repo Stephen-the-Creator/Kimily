@@ -1,0 +1,40 @@
+# Writes a release's "What's new" from its section of CHANGELOG.md, for a release that is already out (new releases
+# get it from release.yml). Run it by hand with the tag, e.g. v0.1.6.
+name: Release notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.1.6"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Write the notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          tag = os.environ["TAG"]
+          version = tag.lstrip("v")
+          changelog = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"(?ms)^## \[" + re.escape(version) + r"\][^\n]*\n(.*?)(?=^## |^---)", changelog)
+          if not m:
+              raise SystemExit(f"CHANGELOG.md has no section for {version}.")
+          intro = ("Kimily for Windows 10/11 (64-bit). Download **Kimily.exe** and run it; no installer needed.\n\n"
+                   "Windows SmartScreen may warn because the build isn't code-signed yet: click **More info → Run anyway**.\n"
+                   "Check the download with `SHA256SUMS.txt` if you like.")
+          body = f"## What's new\n\n{m.group(1).strip()}\n\n---\n\n{intro}"
+          open("notes.md", "w", encoding="utf-8").write(body)
+          PY
+          gh release edit "$TAG" --repo "$REPO" --notes-file notes.md

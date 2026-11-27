@@ -82,13 +82,21 @@ jobs:
         run: |
           gh release view $env:TAG --repo $env:REPO *> $null
           if ($LASTEXITCODE -ne 0) {
-            $notes = @"
+            # What's new: this version's section of CHANGELOG.md (`## [0.1.6] - …` up to the next `## ` or `---`).
+            $version = $env:TAG.TrimStart('v')
+            $changelog = Get-Content -Raw -LiteralPath CHANGELOG.md
+            $match = [regex]::Match($changelog, "(?ms)^## \[$([regex]::Escape($version))\][^\n]*\n(.*?)(?=^## |^---)")
+            $whatsNew = if ($match.Success) { $match.Groups[1].Value.Trim() } else { '' }
+            if (-not $whatsNew) { Write-Warning "CHANGELOG.md has no section for $version." }
+            $intro = @"
           Kimily for Windows 10/11 (64-bit). Download **Kimily.exe** and run it; no installer needed.
 
           Windows SmartScreen may warn because the build isn't code-signed yet: click **More info → Run anyway**.
           Check the download with ``SHA256SUMS.txt`` if you like.
           "@
-            gh release create $env:TAG --repo $env:REPO --target $env:SHA --title "Kimily $env:TAG" --notes $notes --generate-notes
+            $notes = if ($whatsNew) { "## What's new`n`n$whatsNew`n`n---`n`n$intro" } else { $intro }
+            $notes | Set-Content -LiteralPath out/notes.md -Encoding utf8
+            gh release create $env:TAG --repo $env:REPO --target $env:SHA --title "Kimily $env:TAG" --notes-file out/notes.md
             if ($LASTEXITCODE -ne 0) { throw 'Creating the release failed.' }
           }
           gh release upload $env:TAG out/Kimily.exe out/SHA256SUMS.txt --repo $env:REPO --clobber
