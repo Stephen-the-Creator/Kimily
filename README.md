@@ -35,7 +35,7 @@ It runs on **local AI models by default** (Ollama or LM Studio), so your chats a
 | 📝 **Notes & clipboard** | An auto-saving scratchpad, pinned snippets you copy with one click, and a clipboard history that **skips passwords, API keys and card numbers** — with a pause button. |
 | 📂 **File shelf** | Drop files on the island to keep them handy, or send them to Kimily to summarize. |
 | 🧑‍💻 **Coding agents** | See what Claude Code, Codex & co. are doing and answer their questions without switching windows. |
-| 🎨 **Make it yours** | An animated avatar with moods and accessories, 5 island themes (*Obsidian*, *Smoked Glass*, *Tinted*, *Light*, *Neon* with 7 glowing rim colors), 4 panel sizes and tabs you can switch on or off. Dock it at the top (and slide it clear of your browser tabs) or let it float anywhere. |
+| 🎨 **Make it yours** | A 3D cat avatar whose eyes follow your pointer (smooth, fluffy or glass), or the classic orb with accessories, 5 island themes (*Obsidian*, *Smoked Glass*, *Tinted*, *Light*, *Neon* with 7 glowing rim colors), 4 panel sizes and tabs you can switch on or off. Dock it at the top (and slide it clear of your browser tabs) or let it float anywhere. |
 | 🌍 **5 languages** | English, Deutsch, Nederlands, Français, Español. |
 
 ## Screenshots
@@ -102,4 +102,5 @@ The finished `Kimily.exe` lands in `apps/tauri/target/release/` (or in your `CAR
 ## Credits & license
 
 Kimily is a fork of [**Nook**](https://github.com/IAMichan/Nook) by Michan van der Hoek, adapted and extended for Windows.
+The cat avatar is [**Open Bot Avatar**](https://github.com/DominikScholz/open-bot-avatar) by Dominik Scholz (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 Released under the [MIT License](LICENSE).

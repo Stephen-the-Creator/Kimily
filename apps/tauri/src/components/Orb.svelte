@@ -46,6 +46,8 @@
   import { listen } from "@tauri-apps/api/event";
   import { play as playSound } from "../lib/sounds";
   import { nook } from "../lib/state.svelte";
+  import CatBody from "./CatBody.svelte";
+  import { AVATAR_FINISH_KEY, AVATAR_STYLE_KEY, catState, readAvatarFinish, readAvatarStyle } from "../lib/avatar-style";
 
   // Nook zelf: een bol met licht en schaduw waarvan de ogen je muis volgen. Hij knippert, ademt, knikt als iets klaar
   // is, springt op als je iets verstuurt, krijgt blosjes en hartjes als je muis even op hem rust en wordt duizelig na drie snelle klikken.
@@ -70,6 +72,12 @@
   let hearts = $state(false);
   let drowsy = $state(false);
   let accessory = $state<Accessory>(readAccessory());
+  // Settings › Appearance › Avatar: the cat (default) or the classic orb.
+  let avatarStyle = $state(readAvatarStyle());
+  let avatarFinish = $state(readAvatarFinish());
+  const cat = $derived(avatarStyle === "cat");
+  // The cat's own happy eyes stand in for the orb's blush, hearts and little jumps.
+  const catHappy = $derived(happy || blush || hearts || moment === "heard" || moment === "nod" || moment === "hello" || mood === "seen");
   let hovered = $state<string | null>(null);
   // The hovered piece's name stays a moment after the pointer leaves the ring, so you can move onto it and click it.
   let unhoverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -159,6 +167,7 @@
   function cycleAccessory(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (cat) return;
     const next = ACCESSORIES[(ACCESSORIES.indexOf(accessory) + 1) % ACCESSORIES.length];
     setAccessory(next);
     play("hello", 450);
@@ -209,11 +218,16 @@
     listeners.add(listener);
     const accListener = (next: Accessory) => (accessory = next);
     accessoryListeners.add(accListener);
+    const readPrefs = () => {
+      accessory = readAccessory();
+      avatarStyle = readAvatarStyle();
+      avatarFinish = readAvatarFinish();
+    };
     const onStorage = (e: StorageEvent) => {
-      if (e.key === ACCESSORY_KEY) accessory = readAccessory();
+      if (e.key === ACCESSORY_KEY || e.key === AVATAR_STYLE_KEY || e.key === AVATAR_FINISH_KEY) readPrefs();
     };
     window.addEventListener("storage", onStorage);
-    const unPrefs = listen("island-prefs-changed", () => (accessory = readAccessory()));
+    const unPrefs = listen("island-prefs-changed", readPrefs);
     return () => {
       clearTimeout(timer);
       clearInterval(drowse);
@@ -399,6 +413,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div
       class="orb {mood} {moment}"
+      class:cat
       class:drowsy
       class:happy={happy && moment !== "dizzy"}
       bind:this={el}
@@ -408,6 +423,9 @@
       oncontextmenu={cycleAccessory}
       style="--lx:{-gaze.x * 1.6}px;--ly:{-gaze.y * 1.6}px;--level:{level}"
     >
+      {#if cat}
+        <CatBody {size} state={catState(mood, drowsy && !held)} happy={catHappy} finish={avatarFinish} />
+      {:else}
       {#if accessory !== "none"}
         <svg class="acc acc-{accessory}" viewBox="0 0 32 32" aria-hidden="true">
           {#if accessory === "headphones"}
@@ -455,6 +473,7 @@
       {#if drowsy && !held}
         <span class="zz" aria-hidden="true">z</span>
       {/if}
+      {/if}
     </div>
   </div>
 </div>
@@ -491,6 +510,10 @@
     transition: box-shadow 0.3s, background 0.3s;
     cursor: default;
   }
+  /* As a cat the body is CatBody's own drawing: no ball, shine or rim around it. */
+  .orb.cat { background: none; box-shadow: none; border-radius: 0; }
+  .orb.cat::before,
+  .orb.cat::after { content: none; }
   /* The shine: a soft oval that follows the light. */
   .orb::before {
     content: "";

@@ -8,6 +8,7 @@
   import { ACCENTS, DENSITIES, THEMES, themeAccent, resolveTheme, type Density, type ThemeSetting } from "../../lib/theme";
   import { notifyIslandPrefs } from "../../lib/island-tabs";
   import { NEON_RIMS, readNeonRim, saveNeonRim, type NeonRim } from "../../lib/neon-rim";
+  import { AVATAR_FINISHES, AVATAR_STYLES, readAvatarFinish, readAvatarStyle, saveAvatarFinish, saveAvatarStyle, type AvatarFinish, type AvatarStyle } from "../../lib/avatar-style";
 
   type IslandTheme = "obsidian" | "glass" | "tinted" | "light" | "neon";
   const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light", "neon"];
@@ -51,6 +52,20 @@
     else if (islandTheme === "neon") setIslandTheme("obsidian");
   }
 
+  let avatarStyle = $state<AvatarStyle>(readAvatarStyle());
+  let avatarFinish = $state<AvatarFinish>(readAvatarFinish());
+  const avatarStyleNames = $derived<Record<AvatarStyle, string>>({ cat: tr("Kat", "Cat"), orb: tr("Bol", "Orb") });
+  const avatarFinishNames = $derived<Record<AvatarFinish, string>>({ flat: tr("Glad", "Smooth"), fluffy: tr("Pluizig", "Fluffy"), glass: tr("Glas", "Glass") });
+  function pickAvatarStyle(next: AvatarStyle) {
+    avatarStyle = next;
+    saveAvatarStyle(next);
+    notifyIslandPrefs();
+  }
+  function pickAvatarFinish(next: AvatarFinish) {
+    avatarFinish = next;
+    saveAvatarFinish(next);
+    notifyIslandPrefs();
+  }
   let neonRim = $state<NeonRim>(readNeonRim());
   const neonRimNames = $derived<Record<NeonRim, string>>({
     classic: tr("Klassiek", "Classic"),
@@ -100,12 +115,27 @@
     </div>
   </div>
   <p class="faint note">{tr("Kleurt Nook zelf, het accent van het eiland en de belangrijkste knoppen.", "Colors Nook itself, the island accent, and the main buttons.")}</p>
+  <div class="row">
+    <span>{tr("Avatar", "Avatar")}</span>
+    <Segmented label={tr("Avatar", "Avatar")} value={avatarStyle} options={AVATAR_STYLES.map((a) => ({ value: a, label: avatarStyleNames[a] }))} onchange={pickAvatarStyle} />
+  </div>
+  {#if avatarStyle === "cat"}
+    <div class="row">
+      <span>{tr("Oppervlak", "Finish")}<br /><small class="faint">{tr("Pluizig en glas zie je waar Kimily groot is; in het eiland blijft de kat glad.", "Fluffy and glass show where Kimily is drawn large; in the island the cat stays smooth.")}</small></span>
+      <div class="finish">
+        <Segmented label={tr("Oppervlak", "Finish")} value={avatarFinish} options={AVATAR_FINISHES.map((f) => ({ value: f, label: avatarFinishNames[f] }))} onchange={pickAvatarFinish} />
+        <Orb size={56} mood="idle" />
+      </div>
+    </div>
+    <p class="faint note">{tr("Kat: Open Bot Avatar van Dominik Scholz (MIT). Haar ogen volgen je muis.", "Cat: Open Bot Avatar by Dominik Scholz (MIT). Its eyes follow your pointer.")}</p>
+  {:else}
   <label class="row">
     <span>{tr("Accessoire", "Accessory")}<br /><small class="faint">{tr("Tip: klik met rechts op Nook om snel te wisselen.", "Tip: right-click Nook to cycle quickly.")}</small></span>
     <select value={accessory} onchange={(e) => pickAccessory(e.currentTarget.value as Accessory)}>
       {#each ACCESSORIES as a (a)}<option value={a}>{accessoryNames[a]}</option>{/each}
     </select>
   </label>
+  {/if}
   {#if nook.info?.capabilities.desktop}
     <div class="row">
       <span>{tr("Eiland-thema", "Island theme")}</span>
@@ -174,6 +204,7 @@
   .preview-pill:hover { border-color: var(--island-edge-hover); }
   .preview-title { font: var(--text-detail); font-weight: 600; flex: 1; }
   /* A rim palette as a little wheel of its three colors (`.neon-rim-*` in app.css). */
+  .finish { display: flex; align-items: center; gap: var(--space-12); }
   .rim-swatch {
     background: conic-gradient(var(--neon-a), var(--neon-b), var(--neon-c), var(--neon-a));
     transition: transform var(--motion-quick), box-shadow var(--motion-quick);

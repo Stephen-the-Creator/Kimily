@@ -187,3 +187,29 @@ Nook does not bundle any AI model weights or proprietary agent binaries in this 
 [Mermaid](https://github.com/mermaid-js/mermaid) 12.3.0 ships in `apps/macos/Resources/mermaid` (`dist/mermaid.min.js` from the npm package, sha256 `336df803d87a38b70a01e736e666c8f7601d2ce42f5e47c8fafe5d721074b9a3`) under the MIT license; its license text is in that folder.
 
 [KaTeX](https://github.com/KaTeX/KaTeX) 0.16.22 ships in `apps/macos/Resources/katex` (`dist/katex.min.js`, sha256 `e8d885505949f3a5f4abdd5dd0d53696bd1371ad26ffbf4f310dcd77c8cdae89`, `dist/katex.min.css` with its `.woff` and `.ttf` font sources removed, and the `.woff2` fonts from the npm package) under the MIT license; its license text is in that folder. Nook uses it to typeset math in answers without asking a server. The Android companion (`apps/tauri`) uses the same versions of Mermaid and KaTeX from npm (`mermaid` 12.3.0, `katex` 0.16.22, MIT), bundled into the app and loaded only when an answer holds a diagram or math.
+
+Kimily's cat avatar uses [Open Bot Avatar](https://github.com/DominikScholz/open-bot-avatar) (the `open-bot-avatar` package and its gallery cat) under the MIT License:
+
+```text
+MIT License
+
+Copyright (c) 2026 Dominik Scholz
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
