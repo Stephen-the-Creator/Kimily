@@ -224,22 +224,54 @@ fn create_bar(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// While the docked island is being slid along the top edge: where it is now, before it is saved on release.
+/// While the docked island is being slid along the top edge: where the pointer holds it, in logical px from the
+/// island's left edge.
 static DOCK_SLIDE: Mutex<Option<f64>> = Mutex::new(None);
+/// Where the slide has put it so far: the distance from the middle of that screen, and which screen.
+static DOCK_SLID: Mutex<Option<(f64, Option<String>)>> = Mutex::new(None);
 
-/// Slides the docked island sideways to `offset` (logical px from the middle of the screen). Kimily moves the window
-/// itself instead of handing the drag to Windows, which would let it leave the edge and snap it to full screen.
-/// `done` saves the spot; a slide of a few pixels is a slip of the hand and leaves it in the middle.
-pub fn slide_docked_bar(app: &AppHandle, offset: f64, done: bool) -> Option<nook_core::settings::Settings> {
-    if done {
-        *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        let saved = app.state::<AppState>().update_settings(|s| s.dock_x = (offset.abs() >= 12.0).then_some(offset));
-        place_bar(app, panel_open());
-        return Some(saved);
-    }
-    *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = Some(offset);
+/// Slides the docked island along the top edge under the pointer, onto another screen too when the pointer crosses
+/// over. Kimily moves the window itself instead of handing the drag to Windows, which would let it leave the edge and
+/// snap it to full screen. `done` saves the spot and the screen; a slide of a few pixels is a slip of the hand and
+/// leaves it in the middle.
+pub fn slide_docked_bar(app: &AppHandle, grab: f64, done: bool) -> Option<nook_core::settings::Settings> {
+    *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = Some(grab);
     place_bar(app, panel_open());
-    None
+    if !done {
+        return None;
+    }
+    *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    let slid = DOCK_SLID.lock().unwrap_or_else(|e| e.into_inner()).take();
+    let saved = app.state::<AppState>().update_settings(|s| {
+        if let Some((offset, screen)) = slid {
+            s.dock_x = (offset.abs() >= 12.0).then_some(offset);
+            if screen.is_some() {
+                s.dock_screen = screen;
+            }
+        }
+    });
+    place_bar(app, panel_open());
+    Some(saved)
+}
+
+/// The screen the docked island sits on: the one under the pointer while it is slid, then the one it was slid to
+/// (kept by name, so it comes back there after a restart), else where the window is now, else the main screen.
+fn bar_monitor(window: &tauri::WebviewWindow, settings: &nook_core::settings::Settings) -> Option<(tauri::Monitor, Option<f64>)> {
+    if settings.placement != "floating" {
+        if DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner()).is_some() {
+            if let Ok(cursor) = window.cursor_position() {
+                if let Ok(Some(monitor)) = window.monitor_from_point(cursor.x, cursor.y) {
+                    return Some((monitor, Some(cursor.x)));
+                }
+            }
+        }
+        if let Some(name) = settings.dock_screen.as_deref() {
+            if let Some(monitor) = window.available_monitors().ok().and_then(|all| all.into_iter().find(|m| m.name().map(String::as_str) == Some(name))) {
+                return Some((monitor, None));
+            }
+        }
+    }
+    window.current_monitor().ok().flatten().or_else(|| window.primary_monitor().ok().flatten()).map(|m| (m, None))
 }
 
 /// Bovenaan in het midden van het gekozen scherm, of op de plek waar de gebruiker hem neerzette (zwevend).
@@ -289,8 +321,7 @@ pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool
         // Over a full-screen game the closed bar lets clicks through; the open panel must take them right away.
         set_clicks_pass(&window, false);
     }
-    let monitor = window.current_monitor().ok().flatten().or_else(|| window.primary_monitor().ok().flatten());
-    let Some(monitor) = monitor else { return };
+    let Some((monitor, cursor_x)) = bar_monitor(&window, &settings) else { return };
     let scale = monitor.scale_factor();
     let area = monitor.work_area();
     let left = area.position.x as f64 / scale;
@@ -335,7 +366,15 @@ pub fn place_bar_sized(app: &AppHandle, expanded: bool, notice: bool, chip: bool
         // Docked: on the top edge, slid sideways as far as the user dragged it, but never off the screen.
         _ => {
             let centered = left + (width - w) / 2.0;
-            let offset = (*DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner())).or(settings.dock_x).unwrap_or(0.0);
+            let grab = *DOCK_SLIDE.lock().unwrap_or_else(|e| e.into_inner());
+            let offset = match (grab, cursor_x) {
+                (Some(grab), Some(cursor)) => {
+                    let offset = cursor / scale - grab - centered;
+                    *DOCK_SLID.lock().unwrap_or_else(|e| e.into_inner()) = Some((offset, monitor.name().cloned()));
+                    offset
+                }
+                _ => settings.dock_x.unwrap_or(0.0),
+            };
             ((centered + offset).clamp(left, (left + width - w).max(left)), top)
         }
     };

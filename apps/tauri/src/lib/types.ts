@@ -35,6 +35,7 @@ export interface Settings {
   floatX: number | null;
   floatY: number | null;
   dockX: number | null;
+  dockScreen: string | null;
   screenChoice: string;
   accentHex: number;
   hideWhenIdle: boolean;

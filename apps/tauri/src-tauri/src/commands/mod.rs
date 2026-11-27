@@ -398,15 +398,16 @@ pub fn take_chat_terminal(state: State<'_, AppState>) -> Option<crate::state::Ch
     state.pending_chat_terminal.lock().unwrap_or_else(|e| e.into_inner()).take()
 }
 
-/// The docked island follows the pointer along the top edge (`done` on release saves it).
+/// The docked island follows the pointer along the top edge, across screens (`done` on release saves it). `grab` is
+/// where the pointer holds the island, in logical px from its left edge.
 #[tauri::command]
-pub fn bar_slide(app: AppHandle, offset: f64, done: bool) {
+pub fn bar_slide(app: AppHandle, grab: f64, done: bool) {
     #[cfg(desktop)]
-    if let Some(saved) = crate::platform::desktop::slide_docked_bar(&app, offset, done) {
+    if let Some(saved) = crate::platform::desktop::slide_docked_bar(&app, grab, done) {
         let _ = app.emit("settings-changed", &saved);
     }
     #[cfg(not(desktop))]
-    let _ = (app, offset, done);
+    let _ = (app, grab, done);
 }
 
 /// Remembers where the user dragged the bar, as a distance from the middle of the screen. Floating keeps both

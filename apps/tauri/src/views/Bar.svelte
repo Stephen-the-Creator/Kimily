@@ -584,11 +584,15 @@
   let pressAt: { x: number; y: number } | null = null;
   // Docked, Kimily slides the window along the top edge itself: handed to Windows, the drag could pull the island off
   // the edge, and Snap turned it into a full-screen window at the top.
-  let slide: { from: number; offset: number; frame: number } | null = null;
+  // `grab` is where the pointer holds the island (px from its left edge); Kimily keeps it under the pointer, across
+  // screens too.
+  let slide: { grab: number; frame: number } | null = null;
+  let pressGrab = 0;
   function drag(e: MouseEvent) {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement | null)?.closest("button, a, input, select, textarea, [contenteditable]")) return;
     pressAt = { x: e.screenX, y: e.screenY };
+    pressGrab = e.clientX;
     window.addEventListener("mousemove", dragMove);
     window.addEventListener("mouseup", dragEnd);
   }
@@ -596,21 +600,18 @@
     if (!pressAt) return;
     if ((e.buttons & 1) === 0) return dragEnd(e);
     if (slide) {
-      const offset = slide.from + (e.screenX - pressAt.x);
       if (!slide.frame) {
         slide.frame = requestAnimationFrame(() => {
           if (!slide) return;
           slide.frame = 0;
-          void api.barSlide(slide.offset, false);
+          void api.barSlide(slide.grab, false);
         });
       }
-      slide.offset = offset;
       return;
     }
     if (Math.hypot(e.screenX - pressAt.x, e.screenY - pressAt.y) < DRAG_THRESHOLD) return;
     if (!floating) {
-      const from = nook.settings?.dockX ?? 0;
-      slide = { from, offset: from, frame: 0 };
+      slide = { grab: pressGrab, frame: 0 };
       return dragMove(e);
     }
     stopListening();
@@ -620,7 +621,7 @@
   function dragEnd(e?: MouseEvent) {
     if (slide) {
       cancelAnimationFrame(slide.frame);
-      const offset = e && pressAt ? slide.from + (e.screenX - pressAt.x) : slide.offset;
+      const grab = slide.grab;
       slide = null;
       // The click that ends a slide must not also open the island (or press whatever it was let go over).
       const swallow = (c: MouseEvent) => {
@@ -629,7 +630,7 @@
       };
       window.addEventListener("click", swallow, { capture: true, once: true });
       setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 300);
-      void api.barSlide(offset, true);
+      void api.barSlide(grab, true);
     }
     stopListening();
   }
