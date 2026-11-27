@@ -47,7 +47,7 @@
   import { play as playSound } from "../lib/sounds";
   import { nook } from "../lib/state.svelte";
   import CatBody from "./CatBody.svelte";
-  import { AVATAR_FINISH_KEY, AVATAR_STYLE_KEY, catState, readAvatarFinish, readAvatarStyle } from "../lib/avatar-style";
+  import { AVATAR_FINISH_KEY, AVATAR_STYLE_KEY, catState, onAvatarChange, readAvatarFinish, readAvatarStyle } from "../lib/avatar-style";
 
   // Nook zelf: een bol met licht en schaduw waarvan de ogen je muis volgen. Hij knippert, ademt, knikt als iets klaar
   // is, springt op als je iets verstuurt, krijgt blosjes en hartjes als je muis even op hem rust en wordt duizelig na drie snelle klikken.
@@ -228,12 +228,14 @@
     };
     window.addEventListener("storage", onStorage);
     const unPrefs = listen("island-prefs-changed", readPrefs);
+    const offAvatar = onAvatarChange(readPrefs);
     return () => {
       clearTimeout(timer);
       clearInterval(drowse);
       clearInterval(glance);
       listeners.delete(listener);
       accessoryListeners.delete(accListener);
+      offAvatar();
       window.removeEventListener("storage", onStorage);
       unPrefs.then((f) => f());
     };

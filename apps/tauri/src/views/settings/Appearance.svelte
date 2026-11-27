@@ -8,7 +8,7 @@
   import { ACCENTS, DENSITIES, THEMES, themeAccent, resolveTheme, type Density, type ThemeSetting } from "../../lib/theme";
   import { notifyIslandPrefs } from "../../lib/island-tabs";
   import { NEON_RIMS, readNeonRim, saveNeonRim, type NeonRim } from "../../lib/neon-rim";
-  import { AVATAR_FINISHES, AVATAR_STYLES, readAvatarFinish, readAvatarStyle, saveAvatarFinish, saveAvatarStyle, type AvatarFinish, type AvatarStyle } from "../../lib/avatar-style";
+  import { AVATAR_FINISHES, AVATAR_STYLES, canDrawFinishes, readAvatarFinish, readAvatarStyle, saveAvatarFinish, saveAvatarStyle, type AvatarFinish, type AvatarStyle } from "../../lib/avatar-style";
 
   type IslandTheme = "obsidian" | "glass" | "tinted" | "light" | "neon";
   const ISLAND_THEMES: IslandTheme[] = ["obsidian", "glass", "tinted", "light", "neon"];
@@ -54,6 +54,7 @@
 
   let avatarStyle = $state<AvatarStyle>(readAvatarStyle());
   let avatarFinish = $state<AvatarFinish>(readAvatarFinish());
+  const finishesWork = canDrawFinishes();
   const avatarStyleNames = $derived<Record<AvatarStyle, string>>({ cat: tr("Kat", "Cat"), orb: tr("Bol", "Orb") });
   const avatarFinishNames = $derived<Record<AvatarFinish, string>>({ flat: tr("Glad", "Smooth"), fluffy: tr("Pluizig", "Fluffy"), glass: tr("Glas", "Glass") });
   function pickAvatarStyle(next: AvatarStyle) {
@@ -121,9 +122,9 @@
   </div>
   {#if avatarStyle === "cat"}
     <div class="row">
-      <span>{tr("Oppervlak", "Finish")}<br /><small class="faint">{tr("Pluizig en glas zie je waar Kimily groot is; in het eiland blijft de kat glad.", "Fluffy and glass show where Kimily is drawn large; in the island the cat stays smooth.")}</small></span>
+      <span>{tr("Oppervlak", "Finish")}<br /><small class="faint">{finishesWork ? tr("Pluizig en glas zie je waar Kimily groot is; in het eiland blijft de kat glad.", "Fluffy and glass show where Kimily is drawn large; in the island the cat stays smooth.") : tr("Pluizig en glas hebben WebGL2 nodig, en dat staat op deze computer uit. Een nieuwere grafische driver helpt meestal.", "Fluffy and glass need WebGL2, which is off on this computer. A newer graphics driver usually helps.")}</small></span>
       <div class="finish">
-        <Segmented label={tr("Oppervlak", "Finish")} value={avatarFinish} options={AVATAR_FINISHES.map((f) => ({ value: f, label: avatarFinishNames[f] }))} onchange={pickAvatarFinish} />
+        <Segmented label={tr("Oppervlak", "Finish")} value={finishesWork ? avatarFinish : "flat"} options={(finishesWork ? AVATAR_FINISHES : (["flat"] as AvatarFinish[])).map((f) => ({ value: f, label: avatarFinishNames[f] }))} onchange={pickAvatarFinish} />
         <Orb size={56} mood="idle" />
       </div>
     </div>

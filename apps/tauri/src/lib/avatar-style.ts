@@ -56,16 +56,38 @@ export function readAvatarFinish(): AvatarFinish {
   }
 }
 
+// Avatars in the window that saved a choice hear it at once; other windows hear `notifyIslandPrefs`.
+const changeListeners = new Set<() => void>();
+export function onAvatarChange(listener: () => void): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
 export function saveAvatarStyle(style: AvatarStyle) {
   try {
     localStorage.setItem(AVATAR_STYLE_KEY, style);
   } catch {}
+  changeListeners.forEach((l) => l());
 }
 
 export function saveAvatarFinish(finish: AvatarFinish) {
   try {
     localStorage.setItem(AVATAR_FINISH_KEY, finish);
   } catch {}
+  changeListeners.forEach((l) => l());
+}
+
+let webgl2: boolean | null = null;
+/// Fur and glass are drawn with WebGL2. Without it (an old or blocked graphics driver) the cat stays smooth.
+export function canDrawFinishes(): boolean {
+  if (webgl2 === null) {
+    try {
+      webgl2 = !!document.createElement("canvas").getContext("webgl2");
+    } catch {
+      webgl2 = false;
+    }
+  }
+  return webgl2;
 }
 
 export type CatState = "idle" | "thinking" | "working" | "waiting" | "blocked" | "done";
